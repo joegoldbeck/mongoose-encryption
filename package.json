@@ -20,14 +20,14 @@
     "url": "https://github.com/cinch-financial/mongoose-crypto/issues"
   },
   "license": "MIT",
-  "main": "./index.coffee",
+  "main": "./index.js",
   "dependencies": {
-    "coffee-script": "1.7.x",
     "underscore": "1.5.x"
   },
   "devDependencies": {
     "mocha": "1.x.x",
     "chai": "1.x.x",
+    "coffee-script": "1.7.x",
     "mongoose": "3.8.x"
   },
   "engines": {

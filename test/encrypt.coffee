@@ -6,7 +6,7 @@ mongoose.connect 'mongodb://localhost/mongoose-crypto-test'
 encryptionKey = 'CwBDwGUwoM5YzBmzwWPSI+KjBKvWHaablbrEiDYh43Q='
 
 
-encrypt = require '../index.coffee'
+encrypt = require '../index.js'
 
 BasicEncryptedModel = null
 
