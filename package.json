@@ -1,0 +1,40 @@
+{
+  "name": "mongoose-crypto",
+  "version": "0.4.0",
+  "description": "Simple encryption plugin for Mongoose",
+  "keywords": [
+    "mongoose",
+    "mongo",
+    "encrypt",
+    "encryption",
+    "mongodb"
+  ],
+  "author": {
+    "name": "Joe Goldbeck"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cinch-financial/mongoose-crypto.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cinch-financial/mongoose-crypto/issues"
+  },
+  "license": "MIT",
+  "main": "./index.coffee",
+  "dependencies": {
+    "coffee-script": "1.7.x",
+    "underscore": "1.5.x"
+  },
+  "devDependencies": {
+    "mocha": "1.x.x",
+    "chai": "1.x.x",
+    "mongoose": "3.8.x"
+  },
+  "engines": {
+    "node": ">= 0.10.25"
+  },
+  "scripts": {
+    "test": "mocha ./test --compilers coffee:coffee-script/register --timeout 3000"
+  },
+  "readmeFilename": "README.md"
+}
