@@ -2,17 +2,16 @@ crypto = require 'crypto'
 _ = require 'underscore'
 
 algorithm = 'aes-256-cbc'
-keyString = process.env.MONGO_ENCRYPTION_KEY
-if not keyString
-	throw new Error 'process.env.MONGO_ENCRYPTION_KEY is required as a 32 byte string'
-key = new Buffer keyString, 'base64'
-
 
 
 # options:
 # 	fields - array: explicitly declare which fields to encrypt. overrides other options
 # 	exclude - array: exclude certain fields from encryption
-module.exports = (schema, options = {}) ->
+module.exports = (schema, options) ->
+
+	if not options.key
+		throw new Error 'options.key is required as a 32 byte string'
+	key = new Buffer options.key, 'base64'
 
 	# Add necessary fields to schema #
 	schema.add _ct: type: Buffer if not schema.paths._ct

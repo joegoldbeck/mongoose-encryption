@@ -3,7 +3,7 @@ chai = require 'chai'
 assert = chai.assert
 mongoose.connect 'mongodb://localhost/mongoose-crypto-test'
 
-process.env.MONGO_ENCRYPTION_KEY = 'CwBDwGUwoM5YzBmzwWPSI+KjBKvWHaablbrEiDYh43Q='
+encryptionKey = 'CwBDwGUwoM5YzBmzwWPSI+KjBKvWHaablbrEiDYh43Q='
 
 
 encrypt = require '../index.coffee'
@@ -22,7 +22,7 @@ before ->
 		buf: type: Buffer
 		idx: type: String, index: true
 
-	BasicEncryptedModelSchema.plugin encrypt
+	BasicEncryptedModelSchema.plugin encrypt, key: encryptionKey
 
 	BasicEncryptedModel = mongoose.model 'Simple', BasicEncryptedModelSchema
 
@@ -30,16 +30,16 @@ before ->
 describe 'encrypt plugin', ->
 
 	it 'should add field _ct of type Buffer to the schema', ->
-		encryptedSchema = mongoose.Schema({}).plugin(encrypt)
+		encryptedSchema = mongoose.Schema({}).plugin(encrypt, key: encryptionKey)
 		assert.property encryptedSchema.paths, '_ct'
 		assert.propertyVal encryptedSchema.paths._ct, 'instance', 'Buffer'
 
 	it 'should expose an encrypt method on documents', ->
-		EncryptFnTestModel = mongoose.model 'EncryptFnTest', mongoose.Schema({}).plugin(encrypt)
+		EncryptFnTestModel = mongoose.model 'EncryptFnTest', mongoose.Schema({}).plugin(encrypt, key: encryptionKey)
 		assert.isFunction (new EncryptFnTestModel).encrypt
 
 	it 'should expose a decrypt method on documents', ->
-		DecryptFnTestModel = mongoose.model 'DecryptFnTest', mongoose.Schema({}).plugin(encrypt)
+		DecryptFnTestModel = mongoose.model 'DecryptFnTest', mongoose.Schema({}).plugin(encrypt, key: encryptionKey)
 		assert.isFunction (new DecryptFnTestModel).decrypt
 
 
@@ -117,7 +117,7 @@ describe 'document.save() when only nonencrypted fields selected on .find()', ->
 		encryptedText: type: String
 		unencryptedText: type: String
 
-	PartiallyEncryptedModelSchema.plugin encrypt, fields: ['encryptedText']
+	PartiallyEncryptedModelSchema.plugin encrypt, key: encryptionKey, fields: ['encryptedText']
 
 	PartiallyEncryptedModel = mongoose.model 'PartiallyEncrypted', PartiallyEncryptedModelSchema
 
@@ -378,7 +378,7 @@ describe '"fields" option', ->
 			bool: type: Boolean
 			num: type: Number
 
-		EncryptedFieldsModelSchema.plugin encrypt, fields: ['text', 'bool']
+		EncryptedFieldsModelSchema.plugin encrypt, key: encryptionKey, fields: ['text', 'bool']
 
 		FieldsEncryptedModel = mongoose.model 'Fields', EncryptedFieldsModelSchema
 
@@ -406,7 +406,7 @@ describe '"fields" option', ->
 			bool: type: Boolean
 			num: type: Number
 
-		EncryptedFieldsOverrideModelSchema.plugin encrypt, fields: ['text', 'bool'], exclude: ['bool']
+		EncryptedFieldsOverrideModelSchema.plugin encrypt, key: encryptionKey, fields: ['text', 'bool'], exclude: ['bool']
 
 		FieldsOverrideEncryptedModel = mongoose.model 'FieldsOverride', EncryptedFieldsOverrideModelSchema
 
@@ -437,7 +437,7 @@ describe '"exclude" option', ->
 			num: type: Number
 			idx: type: String, index: true
 
-		ExcludeEncryptedModelSchema.plugin encrypt, exclude: ['num']
+		ExcludeEncryptedModelSchema.plugin encrypt, key: encryptionKey, exclude: ['num']
 
 		ExcludeEncryptedModel = mongoose.model 'Exclude', ExcludeEncryptedModelSchema
 
