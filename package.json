@@ -1,7 +1,10 @@
 {
   "name": "mongoose-crypto",
-  "version": "0.4.0",
   "description": "Simple encryption plugin for Mongoose",
+  "version": "0.7.0",
+  "author": {
+    "name": "Joe Goldbeck"
+  },
   "keywords": [
     "mongoose",
     "mongo",
@@ -9,9 +12,7 @@
     "encryption",
     "mongodb"
   ],
-  "author": {
-    "name": "Joe Goldbeck"
-  },
+  "main": "./index.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/cinch-financial/mongoose-crypto.git"
@@ -19,8 +20,8 @@
   "bugs": {
     "url": "https://github.com/cinch-financial/mongoose-crypto/issues"
   },
+  "homepage": "https://github.com/cinch-financial/mongoose-crypto",
   "license": "MIT",
-  "main": "./index.js",
   "dependencies": {
     "underscore": "1.5.x"
   },
@@ -35,6 +36,5 @@
   },
   "scripts": {
     "test": "mocha ./test --compilers coffee:coffee-script/register --timeout 3000"
-  },
-  "readmeFilename": "README.md"
+  }
 }
