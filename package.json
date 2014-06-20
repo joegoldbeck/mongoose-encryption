@@ -1,5 +1,5 @@
 {
-  "name": "mongoose-crypto",
+  "name": "mongoose-encryption",
   "description": "Simple encryption plugin for Mongoose",
   "version": "0.7.0",
   "author": {
@@ -15,12 +15,12 @@
   "main": "./index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/cinch-financial/mongoose-crypto.git"
+    "url": "git://github.com/cinch-financial/mongoose-encryption.git"
   },
   "bugs": {
-    "url": "https://github.com/cinch-financial/mongoose-crypto/issues"
+    "url": "https://github.com/cinch-financial/mongoose-encryption/issues"
   },
-  "homepage": "https://github.com/cinch-financial/mongoose-crypto",
+  "homepage": "https://github.com/cinch-financial/mongoose-encryption",
   "license": "MIT",
   "dependencies": {
     "underscore": "1.5.x"

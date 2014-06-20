@@ -1,2 +1,2 @@
-mongoose-crypto
-===============
+mongoose-encryption
+==================

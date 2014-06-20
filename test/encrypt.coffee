@@ -1,7 +1,7 @@
 mongoose = require 'mongoose'
 chai = require 'chai'
 assert = chai.assert
-mongoose.connect 'mongodb://localhost/mongoose-crypto-test'
+mongoose.connect 'mongodb://localhost/mongoose-encryption-test'
 
 encryptionKey = 'CwBDwGUwoM5YzBmzwWPSI+KjBKvWHaablbrEiDYh43Q='
 
