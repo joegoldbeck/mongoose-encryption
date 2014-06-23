@@ -184,25 +184,38 @@ describe 'EncryptedModel.find', ->
 			assert.equal err, null
 			done()
 
-	it 'should return an unencryped version', (done) ->
-			BasicEncryptedModel.findById simpleTestDoc3._id, (err, doc) ->
-				assert.equal err, null
-				assert.propertyVal doc, 'text', 'Unencrypted text'
-				assert.propertyVal doc, 'bool', true
-				assert.propertyVal doc, 'num', 42
-				assert.property doc, 'date'
-				assert.equal doc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-				assert.propertyVal doc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
-				assert.lengthOf doc.arr, 2
-				assert.equal doc.arr[0], 'alpha'
-				assert.equal doc.arr[1], 'bravo'
-				assert.property doc, 'mix'
-				assert.deepEqual doc.mix, { str: 'A string', bool: false }
-				assert.property doc, 'buf'
-				assert.equal doc.buf.toString(), 'abcdefg'
-				assert.property doc, '_id'
-				assert.notProperty doc, '_ct'
-				done()
+	it 'when doc found, should pass an unencrypted version to the callback', (done) ->
+		BasicEncryptedModel.findById simpleTestDoc3._id, (err, doc) ->
+			assert.equal err, null
+			assert.propertyVal doc, 'text', 'Unencrypted text'
+			assert.propertyVal doc, 'bool', true
+			assert.propertyVal doc, 'num', 42
+			assert.property doc, 'date'
+			assert.equal doc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+			assert.propertyVal doc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+			assert.lengthOf doc.arr, 2
+			assert.equal doc.arr[0], 'alpha'
+			assert.equal doc.arr[1], 'bravo'
+			assert.property doc, 'mix'
+			assert.deepEqual doc.mix, { str: 'A string', bool: false }
+			assert.property doc, 'buf'
+			assert.equal doc.buf.toString(), 'abcdefg'
+			assert.property doc, '_id'
+			assert.notProperty doc, '_ct'
+			done()
+
+	it 'when doc not found by id, should pass null to the callback', (done) ->
+		BasicEncryptedModel.findById '534ec48d60069bc13338b354', (err, doc) ->
+			assert.equal err, null
+			assert.equal doc, null
+			done()
+
+	it 'when doc not found by query, should pass [] to the callback', (done) ->
+		BasicEncryptedModel.find text: 'banana', (err, doc) ->
+			assert.equal err, null
+			assert.isArray doc
+			assert.lengthOf doc, 0
+			done()
 
 
 describe 'EncryptedModel.find lean option', ->
