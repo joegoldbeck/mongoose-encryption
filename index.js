@@ -35,7 +35,11 @@
     }
 
     schema.pre('init', function(next, data) {
-      this.decrypt.call(data, next);
+      this.decrypt.call(data, function(err) {
+        if (err)
+          throw new Error(err); // throw because passing the error to next() in this hook causes it to get swallowed
+        next();
+      });
     });
 
     schema.pre('save', function(next) {
