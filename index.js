@@ -3,7 +3,8 @@
   var crypto = require('crypto');
   var _ = require('underscore');
 
-  var algorithm = 'aes-256-cbc';
+  var ALGORITHM = 'aes-256-cbc';
+  var IV_LENGTH = 16;
 
   module.exports = function(schema, options) {
 
@@ -51,12 +52,13 @@
 
     schema.methods.encrypt = function(cb) {
       var that = this;
-      crypto.randomBytes(16, function(err, iv) {
+      // generate random iv
+      crypto.randomBytes(IV_LENGTH, function(err, iv) {
         var cipher, field, jsonToEncrypt, objectToEncrypt, val;
         if (err) {
           return cb(err);
         }
-        cipher = crypto.createCipheriv(algorithm, key, iv);
+        cipher = crypto.createCipheriv(ALGORITHM, key, iv);
         objectToEncrypt = _.pick(that, encryptedFields);
         for (field in objectToEncrypt) {
           val = objectToEncrypt[field];
@@ -79,11 +81,11 @@
       var that = this;
       if (this._ct) {
         ctWithIV = this._ct.buffer || this._ct;
-        iv = ctWithIV.slice(0, 16);
-        ct = ctWithIV.slice(16, ctWithIV.length);
-        decipher = crypto.createDecipheriv(algorithm, key, iv);
+        iv = ctWithIV.slice(0, IV_LENGTH);
+        ct = ctWithIV.slice(IV_LENGTH, ctWithIV.length);
+        decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
         decipher.end(ct, function() {
-          var decipheredVal, err, field, unencryptedObject, _ref1;
+          var decipheredVal, err, field, unencryptedObject;
           decipher.setEncoding('utf-8');
           try {
             unencryptedObject = JSON.parse(decipher.read());
