@@ -1,15 +1,16 @@
 mongoose-encryption
 ==================
-Simple encryption for mongoose documents, relying on the Node `crypto` module. Encryption and decryption happen transparently during save and find. Rather than encrypting fields individually, this plugin takes advantage of the BSON nature of mongo documents to encrypt multiple fields at once.
+Simple encryption for mongoose documents. Relies on the Node `crypto` module. Encryption and decryption happen transparently during save and find. Rather than encrypting fields individually, this plugin takes advantage of the BSON nature of mongoDB documents to encrypt multiple fields at once.
 
 
 ## How it Works
 
-Encryption is performed using `aes-256-cbc` with a random and unique initialization vector for each operation.
+Encryption is performed using `aes-256-cbc` with a random, unique initialization vector for each operation.
 
-To encrypt, the relevant fields are removed from the document, converted to a JSON object, enciphered, and then inserted back into the document in the `_ct` field as a `Buffer` with the IV prepened. Mongoose converts the `_ct` field to `Binary` when sending to the db.
+To encrypt, the relevant fields are removed from the document, converted to JSON, enciphered in `Buffer` format with the IV prepended, and inserted into the `_ct` field of the document. Mongoose converts the `_ct` field to `Binary` when sending to mongo.
 
 To decrypt, the `_ct` field is deciphered, the JSON is parsed, and the individual fields are inserted back into the document as their original data types.
+
 
 ## Installation
 
@@ -23,78 +24,80 @@ A great way to securely generate such a key is `openssl rand -base64 32`
 
 ### Basic
 
-By default, all fields are encrypted except for `_id` and other fields with indexes
+By default, all fields are encrypted except for `_id`, `__v`, and fields with indexes
 
 ```
 var mongoose = require('mongoose');
 var encrypt = require('mongoose-encryption');
 
 var userSchema = new mongoose.Schema({
-	field1: String,
-	field2: Number
+	name: String,
+	age: Number
 	// whatever else
 });
 
-// Add any other plugins or middleware here
-// For example, pre 'save' middleware for hashing passwords
+// Add any other plugins or middleware here. For example, middleware for hashing passwords
 
 var encryptionKey = process.env.SOME_32BYTE_BASE64_STRING;
 
 userSchema.plugin(encrypt, { key: encryptionKey });
-// This adds a _ct field to the schema, as well as pre 'init' and pre 'save' middleware, and encrypt and decrypt instance methods
+// This adds a _ct field to the schema, as well as pre 'init' and pre 'save' middleware,
+// and encrypt and decrypt instance methods
 
 User = mongoose.model('User', userSchema);
 ```
 
-And you're all set. You should be able to `create`, `find`, and `save` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc... should also all work as normal. `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
+And you're all set. You should be able to `create`, `find`, `save`, and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc... should also all work as normal. `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
 
 ### Exclude Certain Fields from Encryption
 
-To exclude additional fields (other than _id and indexed fields), you can pass the `exclude` option
+To exclude additional fields (other than _id and indexed fields), pass the `exclude` option
 
 ```
-userSchema.plugin(encrypt, { key: encryptionKey, exclude: ['field2'] });
+// exclude age from encryption, still encrypt name. _id will also remain unencrypted
+userSchema.plugin(encrypt, { key: encryptionKey, exclude: ['age'] });
 ```
 
 ### Encrypt Only Certain Fields
 
-You can also specify exactly which fields to encrypt with the `fields` option. This overrides the defaults and all other settings.
+You can also specify exactly which fields to encrypt with the `fields` option. This overrides the defaults and all other options.
 
 ```
-userSchema.plugin(encrypt, { key: encryptionKey, fields: ['field1', 'field2'] });
+// encrypt age regardless of any other options. name and _id will be left unencrypted
+userSchema.plugin(encrypt, { key: encryptionKey, fields: ['age'] });
 ```
-
 
 ### Instance Methods
 
 You can also encrypt and decrypt documents at will (as long as the model includes the plugin).
 
 ```
-joe = new User ({field1: 'something', field2: 42});
+joe = new User ({ name: 'Joe', age: 42 });
 joe.encrypt(function(err){
 	if (err) return handleError(err);
-	console.log(joe.field1); // undefined
-	console.log(joe.field2); // undefined
+	console.log(joe.name); // undefined
+	console.log(joe.age); // undefined
 	console.log(joe._ct); // <Buffer 4a 89 9e df 60 ...
 
 	joe.decrypt(function(err){
 		if (err) return handleError(err);
-		console.log(joe.field1); // something
-		console.log(joe.field2); // 42
+		console.log(joe.name); // Joe
+		console.log(joe.age); // 42
 		console.log(joe._ct); // undefined
 	});
 });
 ```
 
-## Pros & Cons vs Encrypting Fields Individually
+## Pros & Cons of Encrypting Multiple Fields at Once
 
 Advantages:
-- Faster encryption/decryption
+- All Mongoose data types supported via a single code path
+- Faster encryption/decryption when working with the entire document
 - Smaller encrypted documents
-- Supports all Mongoose data types with a single code path
 
 Disadvantages:
 - Cannot select individual encrypted fields in a query nor unset or rename encrypted fields via an update operation
+- Potentially slower in cases where you only want to decrypt a subset of the document
 
 
 ## Security Notes
@@ -107,16 +110,14 @@ Disadvantages:
 
 ## How to Run Unit Tests
 
-0. Install node dependencies with `npm install` and [install mongo](http://docs.mongodb.org/manual/installation/) if not yet installed
+0. Install dependencies with `npm install` and [install mongo](http://docs.mongodb.org/manual/installation/) if you don't have it yet
 1. Start mongo with `mongod`
 2. Run tests with `npm test`
 
 
 ## Security Issue Reporting / Disclaimer
 
-None of the authors are security experts. We relied on accepted tools and practices, and tried hard to make this tool rock-solid and well-tested, but pobody's nerfect. We cannot guarantee there are no security holes in this package (see the license below for the legalese)
-
-**If you find any security-related issues, please report them to security@cinchfinancial.com** and we will get on top of it immediately. For non-security-related issues, please open a Github issue.
+None of the authors are security experts. We relied on accepted tools and practices, and tried hard to make this tool solid and well-tested, but pobody's nerfect. Please look over the code carefully before using it (and note the legal disclaimer below). **If you find or suspect any security-related issues, please email us at security@cinchfinancial.com** and we will get right on it. For non-security-related issues, please open a Github issue or pull request.
 
 
 ## License
@@ -142,4 +143,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
