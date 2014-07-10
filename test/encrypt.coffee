@@ -341,7 +341,7 @@ describe 'document.decrypt()', ->
 			assert.equal err, null
 			done()
 
-	it 'should return an unencryped version', (done) ->
+	it 'should return an unencrypted version', (done) ->
 		simpleTestDoc6.decrypt (err) ->
 			assert.equal err, null
 			assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
@@ -362,7 +362,7 @@ describe 'document.decrypt()', ->
 			assert.notProperty simpleTestDoc6, '_ct'
 			done()
 
-	it 'should return an unencryped version even if document already decrypted', (done) ->
+	it 'should return an unencrypted version even if document already decrypted', (done) ->
 		simpleTestDoc6.decrypt (err) ->
 			assert.equal err, null
 			assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'

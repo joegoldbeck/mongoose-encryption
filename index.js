@@ -11,7 +11,7 @@
     var details, encryptedFields, excludedFields, key, path;
 
     if (!options.key)
-      throw new Error('options.key is required as a 32 byte string');
+      throw new Error('options.key is required as a 32 byte base64 string');
 
     key = new Buffer(options.key, 'base64');
 
