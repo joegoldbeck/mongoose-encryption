@@ -47,7 +47,7 @@ userSchema.plugin(encrypt, { key: encryptionKey });
 User = mongoose.model('User', userSchema);
 ```
 
-And you're all set. You should be able to `create`, `find`, `save`, and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc... should also all work as normal. `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
+And you're all set. You should be able to `find` and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc... also all work as normal. `create` and `save` work great, but note that they return encrypted versions of the document. `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
 
 ### Exclude Certain Fields from Encryption
 
