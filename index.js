@@ -1,6 +1,7 @@
 (function() {
 
   var crypto = require('crypto');
+  var mongoose = require('mongoose');
   var _ = require('underscore');
 
   var ALGORITHM = 'aes-256-cbc';
@@ -36,11 +37,15 @@
     }
 
     schema.pre('init', function(next, data) {
-      this.decrypt.call(data, function(err) {
-        if (err)
-          throw new Error(err); // throw because passing the error to next() in this hook causes it to get swallowed
+      this.decrypt.call(data);
+
+      if(this.constructor.name === mongoose.Types.Embedded.name){
+        this._doc = data;
+        return this;
+      } else {
         next();
-      });
+      }
+
     });
 
     schema.pre('save', function(next) {
@@ -76,7 +81,7 @@
       });
     };
 
-    schema.methods.decrypt = function(cb) {
+    schema.methods.decrypt = function() {
       var ct, ctWithIV, decipher, iv;
       var that = this;
       if (this._ct) {
@@ -84,27 +89,23 @@
         iv = ctWithIV.slice(0, IV_LENGTH);
         ct = ctWithIV.slice(IV_LENGTH, ctWithIV.length);
         decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-        decipher.end(ct, function() {
-          var decipheredVal, err, field, unencryptedObject;
-          decipher.setEncoding('utf-8');
-          try {
-            unencryptedObject = JSON.parse(decipher.read());
-          } catch (err) {
-            if (that._id)
-              idString = that._id.toString()
-            else
-              idString = 'unknown'
-            return cb('Error parsing JSON during decrypt of ' + idString + ': ' + err);
-          }
-          for (field in unencryptedObject) {
-            decipheredVal = unencryptedObject[field];
-            that[field] = decipheredVal;
-          }
-          that._ct = undefined;
-          return cb(null);
-        });
-      } else {
-        cb(null);
+        decryptedObject = decipher.update(ct, undefined, 'utf8') + decipher.final('utf8');
+
+        try {
+          decryptedObjectJSON = JSON.parse(decryptedObject);
+        } catch (err) {
+          if (that._id)
+            idString = that._id.toString();
+          else
+            idString = 'unknown';
+          throw new Error('Error parsing JSON during decrypt of ' + idString + ': ' + err);
+        }
+        for (field in decryptedObjectJSON) {
+          decipheredVal = decryptedObjectJSON[field];
+          that[field] = decipheredVal;
+        }
+        that._ct = undefined;
+
       }
     };
   };
