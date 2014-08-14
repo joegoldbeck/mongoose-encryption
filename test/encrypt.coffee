@@ -384,6 +384,70 @@ describe 'document.decrypt()', ->
 			done()
 
 
+describe 'document.decryptSync()', ->
+	simpleTestDoc7 = null
+	before (done) ->
+		simpleTestDoc7 = new BasicEncryptedModel
+			text: 'Unencrypted text'
+			bool: true
+			num: 42
+			date: new Date '2014-05-19T16:39:07.536Z'
+			id2: '5303e65d34e1e80d7a7ce212'
+			arr: ['alpha', 'bravo']
+			mix: { str: 'A string', bool: false }
+			buf: new Buffer 'abcdefg'
+			idx: 'Indexed'
+
+		simpleTestDoc7.encrypt (err) ->
+			assert.equal err, null
+			done()
+
+	after (done) ->
+		simpleTestDoc7.remove (err) ->
+			assert.equal err, null
+			done()
+
+	it 'should return an unencrypted version', (done) ->
+		simpleTestDoc7.decryptSync()
+		assert.propertyVal simpleTestDoc7, 'text', 'Unencrypted text'
+		assert.propertyVal simpleTestDoc7, 'bool', true
+		assert.propertyVal simpleTestDoc7, 'num', 42
+		assert.property simpleTestDoc7, 'date'
+		assert.equal simpleTestDoc7.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+		assert.propertyVal simpleTestDoc7, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+		assert.lengthOf simpleTestDoc7.arr, 2
+		assert.equal simpleTestDoc7.arr[0], 'alpha'
+		assert.equal simpleTestDoc7.arr[1], 'bravo'
+		assert.property simpleTestDoc7, 'mix'
+		assert.deepEqual simpleTestDoc7.mix, { str: 'A string', bool: false }
+		assert.property simpleTestDoc7, 'buf'
+		assert.equal simpleTestDoc7.buf.toString(), 'abcdefg'
+		assert.propertyVal simpleTestDoc7, 'idx', 'Indexed'
+		assert.property simpleTestDoc7, '_id'
+		assert.notProperty simpleTestDoc7, '_ct'
+		done()
+
+	it 'should return an unencrypted version even if document already decrypted', (done) ->
+		simpleTestDoc7.decryptSync()
+		assert.propertyVal simpleTestDoc7, 'text', 'Unencrypted text'
+		assert.propertyVal simpleTestDoc7, 'bool', true
+		assert.propertyVal simpleTestDoc7, 'num', 42
+		assert.property simpleTestDoc7, 'date'
+		assert.equal simpleTestDoc7.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+		assert.propertyVal simpleTestDoc7, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+		assert.lengthOf simpleTestDoc7.arr, 2
+		assert.equal simpleTestDoc7.arr[0], 'alpha'
+		assert.equal simpleTestDoc7.arr[1], 'bravo'
+		assert.property simpleTestDoc7, 'mix'
+		assert.deepEqual simpleTestDoc7.mix, { str: 'A string', bool: false }
+		assert.property simpleTestDoc7, 'buf'
+		assert.equal simpleTestDoc7.buf.toString(), 'abcdefg'
+		assert.propertyVal simpleTestDoc7, 'idx', 'Indexed'
+		assert.property simpleTestDoc7, '_id'
+		assert.notProperty simpleTestDoc7, '_ct'
+		done()
+
+
 describe '"fields" option', ->
 	it 'should encrypt fields iff they are in the passed in "fields" array even if those fields are indexed', (done) ->
 		EncryptedFieldsModelSchema = mongoose.Schema
