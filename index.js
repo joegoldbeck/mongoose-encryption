@@ -37,13 +37,18 @@
     }
 
     schema.pre('init', function(next, data) {
-      this.decrypt.call(data);
 
-      if(this.constructor.name === mongoose.Types.Embedded.name){
+      if (this.constructor.name === mongoose.Types.Embedded.name){
+        this.decryptSync.call(data);
         this._doc = data;
-        return this;
+        return this; // must return updated doc for EmbeddedDocuments: https://github.com/LearnBoost/mongoose/issues/1079
       } else {
-        next();
+        this.decrypt.call(data, function(err){
+          if (err)
+            throw new Error(err); // throw because passing the error to next() in this hook causes it to get swallowed
+
+          next();
+        });
       }
 
     });
@@ -81,7 +86,16 @@
       });
     };
 
-    schema.methods.decrypt = function() {
+    schema.methods.decrypt = function(cb) {
+      try {
+        schema.methods.decryptSync.call(this);
+        cb();
+      } catch(e){
+        cb(e.message);
+      }
+    };
+
+    schema.methods.decryptSync = function() {
       var ct, ctWithIV, decipher, iv;
       var that = this;
       if (this._ct) {

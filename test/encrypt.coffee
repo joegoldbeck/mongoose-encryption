@@ -26,6 +26,7 @@ before ->
 
 	BasicEncryptedModel = mongoose.model 'Simple', BasicEncryptedModelSchema
 
+
 describe 'encrypt plugin', ->
 
 	it 'should add field _ct of type Buffer to the schema', ->
@@ -340,43 +341,48 @@ describe 'document.decrypt()', ->
 			assert.equal err, null
 			done()
 
-	it 'should return an unencrypted version', ->
-		simpleTestDoc6.decrypt()
-		assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
-		assert.propertyVal simpleTestDoc6, 'bool', true
-		assert.propertyVal simpleTestDoc6, 'num', 42
-		assert.property simpleTestDoc6, 'date'
-		assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-		assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
-		assert.lengthOf simpleTestDoc6.arr, 2
-		assert.equal simpleTestDoc6.arr[0], 'alpha'
-		assert.equal simpleTestDoc6.arr[1], 'bravo'
-		assert.property simpleTestDoc6, 'mix'
-		assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
-		assert.property simpleTestDoc6, 'buf'
-		assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
-		assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
-		assert.property simpleTestDoc6, '_id'
-		assert.notProperty simpleTestDoc6, '_ct'
+	it 'should return an unencrypted version', (done) ->
+		simpleTestDoc6.decrypt (err) ->
+			assert.equal err, null
+			assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
+			assert.propertyVal simpleTestDoc6, 'bool', true
+			assert.propertyVal simpleTestDoc6, 'num', 42
+			assert.property simpleTestDoc6, 'date'
+			assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+			assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+			assert.lengthOf simpleTestDoc6.arr, 2
+			assert.equal simpleTestDoc6.arr[0], 'alpha'
+			assert.equal simpleTestDoc6.arr[1], 'bravo'
+			assert.property simpleTestDoc6, 'mix'
+			assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
+			assert.property simpleTestDoc6, 'buf'
+			assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
+			assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
+			assert.property simpleTestDoc6, '_id'
+			assert.notProperty simpleTestDoc6, '_ct'
+			done()
 
-	it 'should return an unencrypted version even if document already decrypted', ->
-		simpleTestDoc6.decrypt()
-		assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
-		assert.propertyVal simpleTestDoc6, 'bool', true
-		assert.propertyVal simpleTestDoc6, 'num', 42
-		assert.property simpleTestDoc6, 'date'
-		assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-		assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
-		assert.lengthOf simpleTestDoc6.arr, 2
-		assert.equal simpleTestDoc6.arr[0], 'alpha'
-		assert.equal simpleTestDoc6.arr[1], 'bravo'
-		assert.property simpleTestDoc6, 'mix'
-		assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
-		assert.property simpleTestDoc6, 'buf'
-		assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
-		assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
-		assert.property simpleTestDoc6, '_id'
-		assert.notProperty simpleTestDoc6, '_ct'
+	it 'should return an unencrypted version even if document already decrypted', (done) ->
+		simpleTestDoc6.decrypt (err) ->
+			assert.equal err, null
+			assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
+			assert.propertyVal simpleTestDoc6, 'bool', true
+			assert.propertyVal simpleTestDoc6, 'num', 42
+			assert.property simpleTestDoc6, 'date'
+			assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+			assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+			assert.lengthOf simpleTestDoc6.arr, 2
+			assert.equal simpleTestDoc6.arr[0], 'alpha'
+			assert.equal simpleTestDoc6.arr[1], 'bravo'
+			assert.property simpleTestDoc6, 'mix'
+			assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
+			assert.property simpleTestDoc6, 'buf'
+			assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
+			assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
+			assert.property simpleTestDoc6, '_id'
+			assert.notProperty simpleTestDoc6, '_ct'
+			done()
+
 
 describe '"fields" option', ->
 	it 'should encrypt fields iff they are in the passed in "fields" array even if those fields are indexed', (done) ->
@@ -400,12 +406,12 @@ describe '"fields" option', ->
 			assert.equal fieldsEncryptedDoc.bool, undefined
 			assert.propertyVal fieldsEncryptedDoc, 'num', 43
 
-			fieldsEncryptedDoc.decrypt()
-			assert.equal err, null
-			assert.equal fieldsEncryptedDoc.text, 'Unencrypted text'
-			assert.equal fieldsEncryptedDoc.bool, false
-			assert.propertyVal fieldsEncryptedDoc, 'num', 43
-			done()
+			fieldsEncryptedDoc.decrypt (err) ->
+				assert.equal err, null
+				assert.equal fieldsEncryptedDoc.text, 'Unencrypted text'
+				assert.equal fieldsEncryptedDoc.bool, false
+				assert.propertyVal fieldsEncryptedDoc, 'num', 43
+				done()
 
 	it 'should override other options', (done) ->
 		EncryptedFieldsOverrideModelSchema = mongoose.Schema
@@ -428,12 +434,13 @@ describe '"fields" option', ->
 			assert.equal fieldsEncryptedDoc.bool, undefined
 			assert.propertyVal fieldsEncryptedDoc, 'num', 43
 
-			fieldsEncryptedDoc.decrypt()
-			assert.equal err, null
-			assert.equal fieldsEncryptedDoc.text, 'Unencrypted text'
-			assert.equal fieldsEncryptedDoc.bool, false
-			assert.propertyVal fieldsEncryptedDoc, 'num', 43
-			done()
+			fieldsEncryptedDoc.decrypt (err) ->
+				assert.equal err, null
+				assert.equal fieldsEncryptedDoc.text, 'Unencrypted text'
+				assert.equal fieldsEncryptedDoc.bool, false
+				assert.propertyVal fieldsEncryptedDoc, 'num', 43
+				done()
+
 
 describe '"exclude" option', ->
 	it 'should encrypt all non-indexed fields except those in the passed-in "exclude" array', (done) ->
@@ -460,13 +467,13 @@ describe '"exclude" option', ->
 			assert.propertyVal excludeEncryptedDoc, 'num', 43
 			assert.propertyVal excludeEncryptedDoc, 'idx', 'Indexed'
 
-			excludeEncryptedDoc.decrypt()
-			assert.equal err, null
-			assert.equal excludeEncryptedDoc.text, 'Unencrypted text'
-			assert.equal excludeEncryptedDoc.bool, false
-			assert.propertyVal excludeEncryptedDoc, 'num', 43
-			assert.propertyVal excludeEncryptedDoc, 'idx', 'Indexed'
-			done()
+			excludeEncryptedDoc.decrypt (err) ->
+				assert.equal err, null
+				assert.equal excludeEncryptedDoc.text, 'Unencrypted text'
+				assert.equal excludeEncryptedDoc.bool, false
+				assert.propertyVal excludeEncryptedDoc, 'num', 43
+				assert.propertyVal excludeEncryptedDoc, 'idx', 'Indexed'
+				done()
 
 describe 'EmbeddedDocument', ->
 
