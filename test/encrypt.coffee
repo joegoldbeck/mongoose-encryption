@@ -474,3 +474,51 @@ describe '"exclude" option', ->
 				assert.propertyVal excludeEncryptedDoc, 'num', 43
 				assert.propertyVal excludeEncryptedDoc, 'idx', 'Indexed'
 				done()
+
+describe 'EmbeddedDocument', ->
+
+	before ->
+		ChildModelSchema = mongoose.Schema
+			text: type: String
+
+		ChildModelSchema.plugin encrypt, key: encryptionKey
+
+		ParentModelSchema = mongoose.Schema
+			text: type: String
+			children: [ChildModelSchema]
+
+		@ParentModel = mongoose.model 'Parent', ParentModelSchema
+		@ChildModel = mongoose.model 'Child', ChildModelSchema
+
+	describe 'document.save()', ->
+
+		before (done) ->
+			@parentDoc = new @ParentModel
+				text: 'Unencrypted text'
+
+			childDoc = new @ChildModel
+				text: 'Child unencrypted text'
+
+			@parentDoc.children.addToSet childDoc
+
+			@parentDoc.save (err) ->
+				assert.equal err, null
+				done()
+
+		after (done) ->
+			@parentDoc.remove (err) ->
+				assert.equal err, null
+				done()
+
+
+		it 'should have encrypted fields undefined on saved child document', ->
+			assert.equal @parentDoc.children[0].text, undefined
+
+		it 'should have a field _ct containing a mongoose Buffer object which appears encrypted', ->
+			assert.isObject @parentDoc.children[0]._ct
+			assert.property @parentDoc.children[0].toObject()._ct, 'buffer'
+			assert.instanceOf @parentDoc.children[0].toObject()._ct.buffer, Buffer
+			assert.isString @parentDoc.children[0].toObject()._ct.toString(), 'ciphertext can be converted to a string'
+			assert.throw -> JSON.parse @parentDoc.children[0].toObject()._ct.toString(), 'ciphertext is not parsable json'
+
+
