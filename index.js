@@ -1,7 +1,6 @@
 (function() {
 
   var crypto = require('crypto');
-  var mongoose = require('mongoose');
   var _ = require('underscore');
 
   var ALGORITHM = 'aes-256-cbc';
@@ -38,15 +37,14 @@
 
     schema.pre('init', function(next, data) {
 
-      if (this.constructor.name === mongoose.Types.Embedded.name){
+      if (this.constructor.name === 'EmbeddedDocument'){
         this.decryptSync.call(data);
         this._doc = data;
-        return this; // must return updated doc for EmbeddedDocuments: https://github.com/LearnBoost/mongoose/issues/1079
+        return this; // must return updated doc synchronously for EmbeddedDocuments
       } else {
         this.decrypt.call(data, function(err){
           if (err)
             throw new Error(err); // throw because passing the error to next() in this hook causes it to get swallowed
-
           next();
         });
       }
@@ -86,40 +84,37 @@
       });
     };
 
-    schema.methods.decrypt = function(cb) {
+    schema.methods.decrypt = function(cb) { // callback style but actually synchronous to allow for decryptSync without copypasta or complication
       try {
         schema.methods.decryptSync.call(this);
-        cb();
       } catch(e){
-        cb(e.message);
+        return cb(e);
       }
+      cb();
     };
 
     schema.methods.decryptSync = function() {
       var ct, ctWithIV, decipher, iv;
-      var that = this;
       if (this._ct) {
         ctWithIV = this._ct.buffer || this._ct;
         iv = ctWithIV.slice(0, IV_LENGTH);
         ct = ctWithIV.slice(IV_LENGTH, ctWithIV.length);
         decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-        decryptedObject = decipher.update(ct, undefined, 'utf8') + decipher.final('utf8');
-
+        decryptedObjectJSON = decipher.update(ct, undefined, 'utf8') + decipher.final('utf8');
         try {
-          decryptedObjectJSON = JSON.parse(decryptedObject);
+          decryptedObject = JSON.parse(decryptedObjectJSON);
         } catch (err) {
-          if (that._id)
-            idString = that._id.toString();
+          if (this._id)
+            idString = this._id.toString();
           else
             idString = 'unknown';
           throw new Error('Error parsing JSON during decrypt of ' + idString + ': ' + err);
         }
-        for (field in decryptedObjectJSON) {
-          decipheredVal = decryptedObjectJSON[field];
-          that[field] = decipheredVal;
+        for (field in decryptedObject) {
+          decipheredVal = decryptedObject[field];
+          this[field] = decipheredVal;
         }
-        that._ct = undefined;
-
+        this._ct = undefined;
       }
     };
   };
