@@ -557,6 +557,37 @@ describe 'EmbeddedDocument', ->
 	describe 'document.save()', ->
 
 		before (done) ->
+			@parentDoc2 = new @ParentModel
+				text: 'Unencrypted text'
+
+			childDoc2 = new @ChildModel
+				text: 'Child unencrypted text'
+
+			@parentDoc2.children.addToSet childDoc2
+
+			@parentDoc2.save (err) ->
+				assert.equal err, null
+				done()
+
+		after (done) ->
+			@parentDoc2.remove (err) ->
+				assert.equal err, null
+				done()
+
+
+		it 'should have encrypted fields undefined on saved child document', ->
+			assert.equal @parentDoc2.children[0].text, undefined
+
+		it 'should have a field _ct containing a mongoose Buffer object which appears encrypted', ->
+			assert.isObject @parentDoc2.children[0]._ct
+			assert.property @parentDoc2.children[0].toObject()._ct, 'buffer'
+			assert.instanceOf @parentDoc2.children[0].toObject()._ct.buffer, Buffer
+			assert.isString @parentDoc2.children[0].toObject()._ct.toString(), 'ciphertext can be converted to a string'
+			assert.throw -> JSON.parse @parentDoc2.children[0].toObject()._ct.toString(), 'ciphertext is not parsable json'
+
+
+	describe 'document.find()', ->
+		before (done) ->
 			@parentDoc = new @ParentModel
 				text: 'Unencrypted text'
 
@@ -574,15 +605,13 @@ describe 'EmbeddedDocument', ->
 				assert.equal err, null
 				done()
 
-
-		it 'should have encrypted fields undefined on saved child document', ->
-			assert.equal @parentDoc.children[0].text, undefined
-
-		it 'should have a field _ct containing a mongoose Buffer object which appears encrypted', ->
-			assert.isObject @parentDoc.children[0]._ct
-			assert.property @parentDoc.children[0].toObject()._ct, 'buffer'
-			assert.instanceOf @parentDoc.children[0].toObject()._ct.buffer, Buffer
-			assert.isString @parentDoc.children[0].toObject()._ct.toString(), 'ciphertext can be converted to a string'
-			assert.throw -> JSON.parse @parentDoc.children[0].toObject()._ct.toString(), 'ciphertext is not parsable json'
-
-
+		it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
+			@ParentModel.findById @parentDoc._id, (err, doc) ->
+				assert.equal err, null
+				assert.propertyVal doc, 'text', 'Unencrypted text'
+				assert.isArray doc.children
+				assert.isObject doc.children[0]
+				assert.property doc.children[0], 'text', 'Child unencrypted text'
+				assert.property doc.children[0], '_id'
+				assert.notProperty doc.children[0], '_ct'
+				done()
