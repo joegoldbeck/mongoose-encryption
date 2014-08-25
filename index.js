@@ -2,9 +2,14 @@
 
   var crypto = require('crypto');
   var _ = require('underscore');
+  var dotty = require('dotty');
 
   var ALGORITHM = 'aes-256-cbc';
   var IV_LENGTH = 16;
+
+  var isEmbeddedDocument = function(doc) {
+    return doc.constructor.name === 'EmbeddedDocument';
+  };
 
   module.exports = function(schema, options) {
 
@@ -36,8 +41,7 @@
     }
 
     schema.pre('init', function(next, data) {
-
-      if (this.constructor.name === 'EmbeddedDocument'){
+      if (isEmbeddedDocument(this)) {
         this.decryptSync.call(data);
         this._doc = data;
         return this; // must return updated doc synchronously for EmbeddedDocuments
@@ -48,7 +52,6 @@
           next();
         });
       }
-
     });
 
     schema.pre('save', function(next) {
@@ -56,6 +59,28 @@
         this.encrypt(next);
       else
         next();
+    });
+
+    schema.post('save', function(doc) {
+      if (_.isFunction(doc.decryptSync)) doc.decryptSync();
+
+      // Mongoose doesn't trigger post save hook on EmbeddedDocuments,
+      // instead have to call decrypt on all subDocs
+      // ref https://github.com/LearnBoost/mongoose/issues/915
+
+      _.keys(doc.schema.paths).forEach(function(path) {
+        if (path === '_id' || path === '__v') return;
+
+        var nestedDoc = dotty.get(doc, path);
+
+        if (nestedDoc && nestedDoc[0] && isEmbeddedDocument(nestedDoc[0])) {
+          nestedDoc.forEach(function(subDoc) {
+            if (_.isFunction(subDoc.decryptSync)) subDoc.decryptSync();
+          });
+        }
+      });
+
+      return doc;
     });
 
     schema.methods.encrypt = function(cb) {

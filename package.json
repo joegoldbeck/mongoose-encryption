@@ -23,13 +23,15 @@
   "homepage": "https://github.com/cinch-financial/mongoose-encryption",
   "license": "MIT",
   "dependencies": {
+    "dotty": "0.0.2",
     "underscore": "1.5.x"
   },
   "devDependencies": {
     "mocha": "1.x.x",
     "chai": "1.x.x",
     "coffee-script": "1.7.x",
-    "mongoose": "3.8.x"
+    "mongoose": "3.8.x",
+    "sinon": "~1.10.3"
   },
   "engines": {
     "node": ">= 0.10.25"
