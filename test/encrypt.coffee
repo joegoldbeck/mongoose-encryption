@@ -186,7 +186,66 @@ describe 'document.save() when only certain fields are encrypted', ->
           assert.propertyVal finalDoc, 'encryptedText', 'Encrypted Text', 'encrypted fields werent overwritten during the select -> save'
           done()
 
-describe 'EncryptedModel.find', ->
+describe 'EncryptedModel.create()', ->
+
+  beforeEach ->
+    @docContents =
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+
+  afterEach (done) ->
+    BasicEncryptedModel.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'when doc created, it should pass an unencrypted version to the callback', (done) ->
+    BasicEncryptedModel.create @docContents, (err, doc) ->
+      console.log doc
+      assert.equal err, null
+      assert.propertyVal doc, 'text', 'Unencrypted text'
+      assert.propertyVal doc, 'bool', true
+      assert.propertyVal doc, 'num', 42
+      assert.property doc, 'date'
+      assert.equal doc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+      assert.propertyVal doc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.lengthOf doc.arr, 2
+      assert.equal doc.arr[0], 'alpha'
+      assert.equal doc.arr[1], 'bravo'
+      assert.property doc, 'mix'
+      assert.deepEqual doc.mix, { str: 'A string', bool: false }
+      assert.property doc, 'buf'
+      assert.equal doc.buf.toString(), 'abcdefg'
+      assert.property doc, '_id'
+      assert.notProperty doc, '_ct'
+      done()
+
+  it 'after doc created, should be encrypted in db', (done) ->
+    BasicEncryptedModel.create @docContents, (err, doc) ->
+      assert.equal err, null
+      assert.ok doc._id
+      BasicEncryptedModel.find
+        _id: doc._id
+        _ct: $exists: true
+        text: $exists: false
+        bool: $exists: false
+        num: $exists: false
+        date: $exists: false
+        id2: $exists: false
+        arr: $exists: false
+        mix: $exists: false
+        buf: $exists: false
+      , (err, docs) ->
+        assert.lengthOf docs, 1
+        done err
+
+
+describe 'EncryptedModel.find()', ->
   simpleTestDoc3 = null
   before (done) ->
     simpleTestDoc3 = new BasicEncryptedModel
@@ -240,7 +299,7 @@ describe 'EncryptedModel.find', ->
       assert.lengthOf doc, 0
       done()
 
-describe 'EncryptedModel.find lean option', ->
+describe 'EncryptedModel.find() lean option', ->
   simpleTestDoc4 = null
   before (done) ->
     simpleTestDoc4 = new BasicEncryptedModel
