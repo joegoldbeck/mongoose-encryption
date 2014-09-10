@@ -67,7 +67,7 @@ You can also specify exactly which fields to encrypt with the `fields` option. T
 userSchema.plugin(encrypt, { key: encryptionKey, fields: ['age'] });
 ```
 
-### Encrypting specific fields of sub-documents
+### Encrypt Specific Fields of Sub Docs
 
 You can even encrypt fields of sub-documents while leaving the parent document otherwise intact, you just need to add it to the subdocument schema.
 ```
