@@ -47,7 +47,7 @@ userSchema.plugin(encrypt, { key: encryptionKey });
 User = mongoose.model('User', userSchema);
 ```
 
-And you're all set. You should be able to `find` and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc... also all work as normal. `save` and `create` work great, but note that they both cause the document object to become encrypted (easily reversed with the `decrypt` instance method). `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
+And you're all set. You should be able to `find` and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc..., as well as `save` and `create` also all work as normal. `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
 
 ### Exclude Certain Fields from Encryption
 
@@ -65,6 +65,28 @@ You can also specify exactly which fields to encrypt with the `fields` option. T
 ```
 // encrypt age regardless of any other options. name and _id will be left unencrypted
 userSchema.plugin(encrypt, { key: encryptionKey, fields: ['age'] });
+```
+
+### Encrypting specific fields of sub-documents
+
+You can even encrypt fields of sub-documents while leaving the parent document otherwise intact, you just need to add it to the subdocument schema.
+```
+var hidingPlaceSchema = new Schema({
+  latitude: Number,
+  longitude: Number,
+  nickname: String
+});
+
+hidingPlaceSchema.plugin(encrypt, {
+  key: process.env.KEY,
+  exclude: ['nickname']
+});
+
+var userSchema = new Schema({
+  name: String,
+  locationsOfGold: [hidingPlaceSchema]
+});
+
 ```
 
 ### Instance Methods
@@ -87,6 +109,7 @@ joe.encrypt(function(err){
 	});
 });
 ```
+There is also a `decryptSync` function, which executes synchronously and throws if an error is hit.
 
 ## Pros & Cons of Encrypting Multiple Fields at Once
 
