@@ -75,6 +75,9 @@ describe 'document.save()', ->
     sinon.spy BasicEncryptedModel.prototype, 'decryptSync'
 
   beforeEach (done) ->
+    BasicEncryptedModel.prototype.encrypt.reset()
+    BasicEncryptedModel.prototype.decryptSync.reset()
+
     @simpleTestDoc2 = new BasicEncryptedModel
       text: 'Unencrypted text'
       bool: true
@@ -122,7 +125,12 @@ describe 'document.save()', ->
       assert.deepEqual doc.buf, new Buffer 'abcdefg'
       done err
 
-describe 'document.save() when only nonencrypted fields selected on .find()', ->
+   it 'should have called encrypt then decrypt', ->
+    assert.equal @simpleTestDoc2.encrypt.callCount, 1
+    assert.equal @simpleTestDoc2.decryptSync.callCount, 1
+    assert @simpleTestDoc2.encrypt.calledBefore @simpleTestDoc2.decryptSync
+
+describe 'document.save() when only certain fields are encrypted', ->
   before ->
     PartiallyEncryptedModelSchema = mongoose.Schema
       encryptedText: type: String
@@ -137,9 +145,6 @@ describe 'document.save() when only nonencrypted fields selected on .find()', ->
       encryptedText: 'Encrypted Text'
       unencryptedText: 'Unencrypted Text'
 
-    sinon.spy @partiallyEncryptedDoc, 'encrypt'
-    sinon.spy @partiallyEncryptedDoc, 'decryptSync'
-
     @partiallyEncryptedDoc.save (err) ->
       assert.equal err, null
       done()
@@ -148,11 +153,6 @@ describe 'document.save() when only nonencrypted fields selected on .find()', ->
     @partiallyEncryptedDoc.remove (err) ->
       assert.equal err, null
       done()
-
-  it 'should have called encrypt then decrypt', ->
-    assert.equal @partiallyEncryptedDoc.encrypt.callCount, 1
-    assert.equal @partiallyEncryptedDoc.decryptSync.callCount, 1
-    assert @partiallyEncryptedDoc.encrypt.calledBefore @partiallyEncryptedDoc.decryptSync
 
   it 'should have decrypted fields', ->
     assert.equal @partiallyEncryptedDoc.encryptedText, 'Encrypted Text'
@@ -562,55 +562,115 @@ describe '"exclude" option', ->
         done()
 
 describe 'Array EmbeddedDocument', ->
-  before ->
-    ChildModelSchema = mongoose.Schema
-      text: type: String
+  describe 'when only child is encrypted', ->
+    before ->
+      ChildModelSchema = mongoose.Schema
+        text: type: String
 
-    ChildModelSchema.plugin encrypt, key: encryptionKey
+      ChildModelSchema.plugin encrypt, key: encryptionKey
 
-    ParentModelSchema = mongoose.Schema
-      text: type: String
-      children: [ChildModelSchema]
+      ParentModelSchema = mongoose.Schema
+        text: type: String
+        children: [ChildModelSchema]
 
-    @ParentModel = mongoose.model 'Parent', ParentModelSchema
-    @ChildModel = mongoose.model 'Child', ChildModelSchema
+      @ParentModel = mongoose.model 'Parent', ParentModelSchema
+      @ChildModel = mongoose.model 'Child', ChildModelSchema
 
-  beforeEach (done) ->
-    @parentDoc = new @ParentModel
-      text: 'Unencrypted text'
+    beforeEach (done) ->
+      @parentDoc = new @ParentModel
+        text: 'Unencrypted text'
 
-    childDoc = new @ChildModel
-      text: 'Child unencrypted text'
+      childDoc = new @ChildModel
+        text: 'Child unencrypted text'
 
-    @parentDoc.children.addToSet childDoc
+      @parentDoc.children.addToSet childDoc
 
-    @parentDoc.save done
+      @parentDoc.save done
 
-  after (done) ->
-    @parentDoc.remove done
+    after (done) ->
+      @parentDoc.remove done
 
-  describe 'document.save()', ->
-    it 'should have decrypted fields', ->
-      assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
+    describe 'document.save()', ->
+      it 'should have decrypted fields', ->
+        assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
 
-    it 'should persist children as encrypted', (done) ->
-      @ParentModel.find
-        _id: @parentDoc._id
-        'children._ct': $exists: true
-        'children.text': $exists: false
-      , (err, docs) ->
-        assert.lengthOf docs, 1
-        assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
-        done()
+      it 'should persist children as encrypted', (done) ->
+        @ParentModel.find
+          _id: @parentDoc._id
+          'children._ct': $exists: true
+          'children.text': $exists: false
+        , (err, docs) ->
+          assert.lengthOf docs, 1
+          assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
+          done()
 
-  describe 'document.find()', ->
-    it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
-      @ParentModel.findById @parentDoc._id, (err, doc) ->
-        assert.equal err, null
-        assert.propertyVal doc, 'text', 'Unencrypted text'
-        assert.isArray doc.children
-        assert.isObject doc.children[0]
-        assert.property doc.children[0], 'text', 'Child unencrypted text'
-        assert.property doc.children[0], '_id'
-        assert.notProperty doc.children[0], '_ct'
-        done()
+    describe 'document.find()', ->
+      it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
+        @ParentModel.findById @parentDoc._id, (err, doc) ->
+          assert.equal err, null
+          assert.propertyVal doc, 'text', 'Unencrypted text'
+          assert.isArray doc.children
+          assert.isObject doc.children[0]
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+          done()
+
+  describe 'when child and parent are encrypted', ->
+    before ->
+      ChildModelSchema = mongoose.Schema
+        text: type: String
+
+      ChildModelSchema.plugin encrypt, key: encryptionKey
+
+      ParentModelSchema = mongoose.Schema
+        text: type: String
+        children: [ChildModelSchema]
+
+      ParentModelSchema.plugin encrypt, key: encryptionKey, fields: ['text']
+
+      @ParentModel = mongoose.model 'ParentBoth', ParentModelSchema
+      @ChildModel = mongoose.model 'ChildBoth', ChildModelSchema
+
+    beforeEach (done) ->
+      @parentDoc = new @ParentModel
+        text: 'Unencrypted text'
+
+      childDoc = new @ChildModel
+        text: 'Child unencrypted text'
+
+      @parentDoc.children.addToSet childDoc
+
+      @parentDoc.save done
+
+    after (done) ->
+      @parentDoc.remove done
+
+    describe 'document.save()', ->
+      it 'should have decrypted fields on parent', ->
+        assert.equal @parentDoc.text, 'Unencrypted text'
+
+      it 'should have decrypted fields', ->
+        assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
+
+      it 'should persist children as encrypted', (done) ->
+        @ParentModel.find
+          _id: @parentDoc._id
+          'children._ct': $exists: true
+          'children.text': $exists: false
+        , (err, docs) ->
+          assert.lengthOf docs, 1
+          assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
+          done()
+
+    describe 'document.find()', ->
+      it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
+        @ParentModel.findById @parentDoc._id, (err, doc) ->
+          assert.equal err, null
+          assert.propertyVal doc, 'text', 'Unencrypted text'
+          assert.isArray doc.children
+          assert.isObject doc.children[0]
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+          done()
