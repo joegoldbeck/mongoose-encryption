@@ -733,3 +733,52 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
+
+  describe 'when entire parent is encrypted', ->
+    before ->
+      ParentModelSchema = mongoose.Schema
+        text: type: String
+        children: [text: type: String]
+
+      ParentModelSchema.plugin encrypt, key: encryptionKey
+
+      @ParentModel = mongoose.model 'ParentEntire', ParentModelSchema
+
+    beforeEach (done) ->
+      @parentDoc = new @ParentModel
+        text: 'Unencrypted text'
+        children: [text: 'Child unencrypted text']
+
+      @parentDoc.save done
+
+    after (done) ->
+      @parentDoc.remove done
+
+    describe 'document.save()', ->
+      it 'should have decrypted fields in document passed to call back', ->
+        assert.equal @parentDoc.text, 'Unencrypted text'
+        assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
+
+      it 'should persist the entire document as encrypted', (done) ->
+        @ParentModel.find
+          _id: @parentDoc._id
+          '_ct': $exists: true
+          'children': $exists: false
+          'children.text': $exists: false
+        , (err, docs) ->
+          assert.lengthOf docs, 1
+          assert.propertyVal docs[0], 'text', 'Unencrypted text'
+          assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
+          done()
+
+    describe 'document.find()', ->
+      it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
+        @ParentModel.findById @parentDoc._id, (err, doc) ->
+          assert.equal err, null
+          assert.propertyVal doc, 'text', 'Unencrypted text'
+          assert.isArray doc.children
+          assert.isObject doc.children[0]
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+          done()
