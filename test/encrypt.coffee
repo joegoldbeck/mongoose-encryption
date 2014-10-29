@@ -782,3 +782,37 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
+
+    describe 'Encrypted embedded document when parent has validation error', ->
+      before ->
+        ChildModelSchema = mongoose.Schema
+          text: type: String
+
+        ChildModelSchema.plugin encrypt,
+          key: encryptionKey
+          fields: ['text']
+
+        ParentModelSchema = mongoose.Schema
+          text: type: String
+          children: [ChildModelSchema]
+
+        ParentModelSchema.pre 'validate', (next) ->
+            @invalidate 'text', 'invalid', this.text
+            next()
+
+        @ParentModel = mongoose.model 'ParentAgain', ParentModelSchema
+        @ChildModel = mongoose.model 'ChildAgain', ChildModelSchema
+
+      it 'Should return still unencrypt embedded documents after save', ->
+        doc = new @ParentModel
+          text: 'here it is'
+          children: [{text: 'Child unencrypted text'}]
+        doc.save (err) ->
+          assert.ok err, 'There should be a validation error'
+          assert.propertyVal doc, 'text', 'here it is'
+          assert.isArray doc.children
+          assert.isObject doc.children[0]
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+
