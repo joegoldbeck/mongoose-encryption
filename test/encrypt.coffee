@@ -782,3 +782,130 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
+
+  describe 'Encrypted embedded document when parent has validation error and doesnt have encryptedChildren plugin', ->
+    before ->
+      ChildModelSchema = mongoose.Schema
+        text: type: String
+
+      ChildModelSchema.plugin encrypt,
+        key: encryptionKey
+        fields: ['text']
+
+      ParentModelSchema = mongoose.Schema
+        text: type: String
+        children: [ChildModelSchema]
+
+      ParentModelSchema.pre 'validate', (next) ->
+          @invalidate 'text', 'invalid', this.text
+          next()
+
+      @ParentModel2 = mongoose.model 'ParentWithoutPlugin', ParentModelSchema
+      @ChildModel2 = mongoose.model 'ChildAgain', ChildModelSchema
+
+    it 'Should return encrypted embedded documents after failed parent save', (done) ->
+      doc = new @ParentModel2
+        text: 'here it is'
+        children: [{text: 'Child unencrypted text'}]
+      doc.save (err) ->
+        assert.ok err, 'There should be a validation error'
+        assert.propertyVal doc, 'text', 'here it is'
+        assert.isArray doc.children
+        assert.isObject doc.children[0]
+        assert.property doc.children[0], '_id'
+        assert.property doc.children[0], '_ct'
+        assert.notProperty doc.children[0], 'text'
+        done()
+
+  describe 'Encrypted embedded document when parent has validation error and has encryptedChildren plugin', ->
+    before ->
+      ChildModelSchema = mongoose.Schema
+        text: type: String
+
+      ChildModelSchema.plugin encrypt,
+        key: encryptionKey
+        fields: ['text']
+
+      ParentModelSchema = mongoose.Schema
+        text: type: String
+        children: [ChildModelSchema]
+
+      ParentModelSchema.pre 'validate', (next) ->
+          @invalidate 'text', 'invalid', this.text
+          next()
+
+      ParentModelSchema.plugin encrypt.encryptedChildren
+
+
+      @ParentModel2 = mongoose.model 'ParentWithPlugin', ParentModelSchema
+      @ChildModel2 = mongoose.model 'ChildOnceMore', ChildModelSchema
+
+    it 'should return unencrypted embedded documents after failed parent save', (done) ->
+      doc = new @ParentModel2
+        text: 'here it is'
+        children: [{text: 'Child unencrypted text'}]
+      doc.save (err) ->
+        assert.ok err, 'There should be a validation error'
+        assert.propertyVal doc, 'text', 'here it is'
+        assert.isArray doc.children
+        assert.property doc.children[0], '_id'
+        assert.notProperty doc.children[0], '_ct'
+        assert.property doc.children[0], 'text', 'Child unencrypted text'
+        done()
+
+  describe 'Encrypted embedded document when parent has both encrypt and encryptedChildren plugins', ->
+    before ->
+      ChildModelSchema = mongoose.Schema
+        text: type: String
+
+      ChildModelSchema.plugin encrypt,
+        key: encryptionKey
+        fields: ['text']
+
+      ParentModelSchema = mongoose.Schema
+        text: type: String
+        children: [ChildModelSchema]
+        encryptedText: type: String
+
+      ParentModelSchema.plugin encrypt.encryptedChildren
+      ParentModelSchema.plugin encrypt,
+        key: encryptionKey
+        fields: ['encryptedText']
+
+      @ParentModel2 = mongoose.model 'ParentWithBothPlugins', ParentModelSchema
+      @ChildModel2 = mongoose.model 'Child2', ChildModelSchema
+
+    describe 'when parent document has validation error', =>
+      before ->
+        @invalidDoc = new @ParentModel2
+          text: 'here it is'
+          encryptedText: 'here is more'
+          children: [{text: 'Child unencrypted text'}]
+        @invalidDoc.invalidate 'text', 'invalid', this.text
+
+      it 'should return unencrypted parent and embedded documents', (done) ->
+        doc = @invalidDoc
+        @invalidDoc.save (err) ->
+          assert.ok err, 'There should be a validation error'
+          assert.propertyVal doc, 'text', 'here it is'
+          assert.propertyVal doc, 'encryptedText', 'here is more'
+          assert.isArray doc.children
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          done()
+
+    describe 'when parent document does not have validation error', =>
+      it 'should return unencrypted parent and embedded documents', (done) ->
+        doc = new @ParentModel2
+          text: 'here it is'
+          encryptedText: 'here is more'
+          children: [{text: 'Child unencrypted text'}]
+        doc.save (err) ->
+          assert.equal err, null
+          assert.propertyVal doc, 'text', 'here it is'
+          assert.isArray doc.children
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          done()
