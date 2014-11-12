@@ -61,13 +61,7 @@
         next();
     });
 
-    schema.post('save', function(doc) {
-      if (_.isFunction(doc.decryptSync)) doc.decryptSync();
-
-      // Mongoose doesn't trigger post save hook on EmbeddedDocuments,
-      // instead have to call decrypt on all subDocs
-      // ref https://github.com/LearnBoost/mongoose/issues/915
-
+    decryptEmbeddedDocs = function(doc) {
       _.keys(doc.schema.paths).forEach(function(path) {
         if (path === '_id' || path === '__v') return;
 
@@ -79,6 +73,16 @@
           });
         }
       });
+    }
+
+    schema.post('save', function(doc) {
+      if (_.isFunction(doc.decryptSync)) doc.decryptSync();
+
+      // Until 3.8.6, Mongoose didn't trigger post save hook on EmbeddedDocuments,
+      // instead had to call decrypt on all subDocs.
+      // ref https://github.com/LearnBoost/mongoose/issues/915
+
+      decryptEmbeddedDocs(doc);
 
       return doc;
     });
@@ -143,5 +147,16 @@
       }
     };
   };
+
+  // applied to schemas that contain encrypted embedded documents
+  // this ensures that if parent has a validation error, children don't come out encrypted,
+  // which could otherwise cause data loss if validation error fixed and a resave was attempted
+  module.exports.encryptedChildren = function(schema, options) {
+    schema.post('validate', function(doc) {
+      if (doc.errors) {
+        decryptEmbeddedDocs(doc);
+      }
+    });
+  }
 
 }).call(this);
