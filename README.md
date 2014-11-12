@@ -69,7 +69,7 @@ userSchema.plugin(encrypt, { key: encryptionKey, fields: ['age'] });
 
 ### Encrypt Specific Fields of Sub Docs
 
-You can also encrypt fields of sub-documents, you just need to add the `encrypt` plugin to the subdocument schema. You should also add the `encrypt.encryptedChildren` plugin to the parent if you continue to work with documents after failed validation.
+You can even encrypt fields of sub-documents, you just need to add the `encrypt` plugin to the subdocument schema. You should also add the `encrypt.encryptedChildren` plugin to the parent if you continue to work with documents following failed saves caused by validation errors.
 ```
 var hidingPlaceSchema = new Schema({
   latitude: Number,
@@ -87,7 +87,7 @@ var userSchema = new Schema({
   locationsOfGold: [hidingPlaceSchema]
 });
 
-userSchema.plugin encrypt.encryptedChildren // only needed for correct document behavior following validation errors
+userSchema.plugin encrypt.encryptedChildren // only needed for correct document behavior following validation errors during a save
 
 ```
 The need for `encrypt.encryptedChildren` arises because subdocument 'pre save' hooks are called before parent validation completes, and have no hooks that get fired if parent validation fails. Without the plugin, if you repair a parent doc after a failed save and then try to save again, data in the encrypted fields of the subdocuments will be lost.
