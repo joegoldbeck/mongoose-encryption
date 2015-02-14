@@ -1,7 +1,7 @@
 {
   "name": "mongoose-encryption",
-  "description": "Simple encryption plugin for Mongoose",
-  "version": "0.11.0",
+  "description": "Simple encryption and authentication plugin for Mongoose",
+  "version": "0.12.0",
   "author": {
     "name": "Joe Goldbeck"
   },
@@ -10,7 +10,11 @@
     "mongo",
     "encrypt",
     "encryption",
-    "mongodb"
+    "sign",
+    "authenticate",
+    "authentication",
+    "mongodb",
+    "HMAC"
   ],
   "main": "./index.js",
   "repository": {
