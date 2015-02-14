@@ -1,16 +1,21 @@
 mongoose-encryption
 ==================
-Simple encryption for mongoose documents. Relies on the Node `crypto` module. Encryption and decryption happen transparently during save and find. Rather than encrypting fields individually, this plugin takes advantage of the BSON nature of mongoDB documents to encrypt multiple fields at once.
+Simple encryption and authentication for mongoose documents. Relies on the Node `crypto` module. Encryption and decryption happen transparently during save and find. Rather than encrypting fields individually, this plugin takes advantage of the BSON nature of mongoDB documents to encrypt multiple fields at once.
 
 
 ## How it Works
 
-Encryption is performed using `aes-256-cbc` with a random, unique initialization vector for each operation.
+Encryption is performed using `AES-256-CBC` with a random, unique initialization vector for each operation. Authentication is performed using `HMAC-SHA-512`.
 
-To encrypt, the relevant fields are removed from the document, converted to JSON, enciphered in `Buffer` format with the IV prepended, and inserted into the `_ct` field of the document. Mongoose converts the `_ct` field to `Binary` when sending to mongo.
+To encrypt, the relevant fields are removed from the document, converted to JSON, enciphered in `Buffer` format with the IV and plugin version prepended, and inserted into the `_ct` field of the document. Mongoose converts the `_ct` field to `Binary` when sending to mongo.
 
 To decrypt, the `_ct` field is deciphered, the JSON is parsed, and the individual fields are inserted back into the document as their original data types.
 
+To sign, the relevant fields (which necessarily include `_id` and `_ct`)  are stably stringified and signed along with the list of signed fields, the collection name, and the plugin version. This signature is stored in `Buffer` format in the `_ac` field with the plugin version prepended and the list of signed fields appended. Mongoose converts the field to `Binary` when sending to mongo.
+
+To authenticate, a signature is generated in the same fashion as above, and compared to the `_ac` field on the document. If the signatures are equal, authentication succeeds. If they are not, or if `_ac` is missing from the document, authentication fails and an error is passed to the callback.
+
+During `save`, documents are encrypted and then signed. During `find`, documents are authenticated and then decrypted
 
 ## Installation
 
@@ -18,9 +23,9 @@ To decrypt, the `_ct` field is deciphered, the JSON is parsed, and the individua
 
 
 ## Usage
+Generate and store keys separately. They should probably live in environment variables, but be sure not to lose them. You can either use a single `secret` string of any length; or a pair of base64 strings (a 32-byte `encryptionKey` and a 64-byte `signingKey`).
 
-Generate and store encryption key separately. It should be a 32-byte base64 string. It should probably live in an environment variable, but be sure not to lose it.
-A great way to securely generate such a key is `openssl rand -base64 32`
+A great way to securely generate this pair of keys is `openssl rand -base64 32; openssl rand -base64 64;`
 
 ### Basic
 
@@ -31,45 +36,74 @@ var mongoose = require('mongoose');
 var encrypt = require('mongoose-encryption');
 
 var userSchema = new mongoose.Schema({
-	name: String,
-	age: Number
-	// whatever else
+    name: String,
+    age: Number
+    // whatever else
 });
 
 // Add any other plugins or middleware here. For example, middleware for hashing passwords
 
-var encryptionKey = process.env.SOME_32BYTE_BASE64_STRING;
+var encKey = process.env.SOME_32BYTE_BASE64_STRING;
+var sigKey = process.env.SOME_64BYTE_BASE64_STRING;
 
-userSchema.plugin(encrypt, { key: encryptionKey });
-// This adds a _ct field to the schema, as well as pre 'init' and pre 'save' middleware,
-// and encrypt and decrypt instance methods
+userSchema.plugin(encrypt, { encryptionKey: encKey, signingKey: sigKey });
+// This adds _ct and _ac fields to the schema, as well as pre 'init' and pre 'save' middleware,
+// and encrypt, decrypt, sign, and authenticate instance methods
 
 User = mongoose.model('User', userSchema);
 ```
 
-And you're all set. You should be able to `find` and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be decrypted. `findOne`, `findById`, etc..., as well as `save` and `create` also all work as normal. `update` will work fine on unencrypted fields, but will not work correctly if encrypted fields are involved.
+And you're all set. You should be able to `find` and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be authenticated and decrypted. `findOne`, `findById`, etc..., as well as `save` and `create` also all work as normal. `update` will work fine on unencrypted and unauthenticated fields, but will not work correctly if encrypted or authenticated fields are involved.
+
 
 ### Exclude Certain Fields from Encryption
 
-To exclude additional fields (other than _id and indexed fields), pass the `exclude` option
+To exclude additional fields (other than _id and indexed fields), pass the `excludeFromEncryption` option
 
 ```
 // exclude age from encryption, still encrypt name. _id will also remain unencrypted
-userSchema.plugin(encrypt, { key: encryptionKey, exclude: ['age'] });
+userSchema.plugin(encrypt, { encryptionKey: encKey, signingKey: sigKey, excludeFromEncryption: ['age'] });
 ```
 
 ### Encrypt Only Certain Fields
 
-You can also specify exactly which fields to encrypt with the `fields` option. This overrides the defaults and all other options.
+You can also specify exactly which fields to encrypt with the `encryptedFields` option. This overrides the defaults and all other options.
 
 ```
 // encrypt age regardless of any other options. name and _id will be left unencrypted
-userSchema.plugin(encrypt, { key: encryptionKey, fields: ['age'] });
+userSchema.plugin(encrypt, { encryptionKey: encKey, signingKey: sigKey, encryptedFields: ['age'] });
+```
+
+### Authenticate Additional Fields
+By default, the encrypted parts of documents are authenticated along with the `_id` to prevent copy/paste attacks by an attacker with database write access. If you use one of the above options such that only part of your document is encrypted, you might want to authenticate the fields kept in cleartext to prevent tampering. In particular, consider authenticating any fields used for authorization, such as `email`, `isAdmin`, or `password` (though password should probably be in the encrypted block). You can do this with the `additionalAuthenticatedFields` option.
+```
+// keep isAdmin in clear but pass error on find() if tampered with
+userSchema.plugin(encrypt, {
+    encryptionKey: encKey,
+    signingKey: sigKey,
+    excludeFromEncryption: ['isAdmin'],
+    additionalAuthenticatedFields: ['isAdmin']
+});
+```
+Note that the most secure choice is to include all non-encrypted fields for authentication, as this prevents tampering with any part of the document.
+
+### Renaming an Encrypted Collection
+
+To guard against cross-collection attacks, the collection name is included in the signed block. This means that if you simply change the name of a collection in Mongo (and therefore update the model name in Mongoose), authentication would fail. To restore functionality, pass in the `collectionId` option with the old model name.
+```
+// used to be the `users` collection, now it's `powerusers`
+poweruserSchema.plugin(encrypt, {
+    encryptionKey: encKey,
+    signingKey: sigKey,
+    collectionId: `User` // this corresponds to the old model name
+});
+
+PowerUser = mongoose.model('PowerUser', poweruserSchema);
 ```
 
 ### Encrypt Specific Fields of Sub Docs
 
-You can even encrypt fields of sub-documents, you just need to add the `encrypt` plugin to the subdocument schema. You should also add the `encrypt.encryptedChildren` plugin to the parent if you continue to work with documents following failed saves caused by validation errors.
+You can even encrypt fields of sub-documents, you just need to add the `encrypt` plugin to the subdocument schema. *Subdocuments are not self-authenticated*, so you should consider adding the `encrypt` plugin to the parent schema as well for the authentication it provides, in addition to adding the `encrypt.encryptedChildren` plugin to the parent if you continue to work with documents following failed saves caused by validation errors.
 ```
 var hidingPlaceSchema = new Schema({
   latitude: Number,
@@ -78,8 +112,9 @@ var hidingPlaceSchema = new Schema({
 });
 
 hidingPlaceSchema.plugin(encrypt, {
-  key: process.env.KEY,
-  exclude: ['nickname']
+  encryptionKey: encKey,
+  signingKey: sigKey,
+  excludeFromEncryption: ['nickname']
 });
 
 var userSchema = new Schema({
@@ -87,33 +122,143 @@ var userSchema = new Schema({
   locationsOfGold: [hidingPlaceSchema]
 });
 
-// only needed for correct document behavior following validation errors during a save
-userSchema.plugin encrypt.encryptedChildren
+// optional but recommended: authenticate subdocuments from the parent document
+userSchema.plugin(encrypt, {
+  encryptionKey: encKey,
+  signingKey: sigKey,
+  additionalAuthenticatedFields: ['locationsOfGold'],
+  encryptedFields: []
+});
+
+// optional. only needed for correct document behavior following validation errors during a save
+userSchema.plugin(encrypt.encryptedChildren);
 
 ```
 The need for `encrypt.encryptedChildren` arises because subdocument 'pre save' hooks are called before parent validation completes, and there are no subdocument hooks that fire when parent validation fails. Without the plugin, if you repair a parent doc after a failed save and then try to save again, data in the encrypted fields of the subdocuments will be lost.
 
+### Secret String Instead of Two Keys
+
+For convenience, you can also pass in a single secret string instead of two keys.
+```
+var secret = process.env.SOME_LONG_UNGUESSABLE_STRING;
+userSchema.plugin(encrypt, { secret: secret });
+```
+
+### Changing Options
+For the most part, you can seemlessly update the plugin options. This won't immediately change what is stored in the database, but it will change how documents are saved moving forwards.
+
+However, you cannot change the following options once you've started using them for a collection:
+- `secret`
+- `encryptionKey`
+- `signingKey`
+- `collectionId`
+
 ### Instance Methods
 
-You can also encrypt and decrypt documents at will (as long as the model includes the plugin). `decrypt` is idempotent. `encrypt` is not.
+You can also encrypt, decrypt, sign, and authenticate documents at will (as long as the model includes the plugin). `decrypt`, `sign`, and `authenticate` are all idempotent. `encrypt` is not.
 
 ```
 joe = new User ({ name: 'Joe', age: 42 });
 joe.encrypt(function(err){
-	if (err) return handleError(err);
-	console.log(joe.name); // undefined
-	console.log(joe.age); // undefined
-	console.log(joe._ct); // <Buffer 4a 89 9e df 60 ...
+  if (err) { return handleError(err); }
+  console.log(joe.name); // undefined
+  console.log(joe.age); // undefined
+  console.log(joe._ct); // <Buffer 61 41 55 62 33 ...
 
-	joe.decrypt(function(err){
-		if (err) return handleError(err);
-		console.log(joe.name); // Joe
-		console.log(joe.age); // 42
-		console.log(joe._ct); // undefined
-	});
+  joe.decrypt(function(err){
+    if (err) { return handleError(err); }
+    console.log(joe.name); // Joe
+    console.log(joe.age); // 42
+    console.log(joe._ct); // undefined
+  });
+});
+
+```
+
+```
+joe.age = 30
+
+joe.sign(function(err){
+  if (err) { return handleError(err); }
+  console.log(joe.name); // Joe
+  console.log(joe.age); // 30
+  console.log(joe._ac); // <Buffer 61 fa 63 95 50
+
+  joe.authenticate(function(err){
+    if (err) { return handleError(err); }
+    console.log(joe.name); // Joe
+    console.log(joe.age); // 30
+    console.log(joe._ac); // <Buffer 61 fa 63 95 50
+
+    joe.age = 22
+
+    joe.authenticate(function(err){ // authenticate without signing changes, error is passed to callback
+    	if (err) { return handleError(err); } // this conditional is executed
+    	console.log(joe.name); // this won't execute
+  });
 });
 ```
-There is also a `decryptSync` function, which executes synchronously and throws if an error is hit.
+There are also `decryptSync` and `authenticateSync` functions, which execute synchronously and throw if an error is hit.
+
+## Getting Started with an Existing Collection
+If you are using mongoose-encryption on an empty collection, you can immediately begin to use it as above. To use it on an existing collection, you'll need to either run a migration or use less secure options.
+
+### The Secure Way
+To prevent tampering of the documents, each document is required by default to have a signature upon `find`. The class method `migrateToA()` encrypts and signs all documents in the collection. This should go without saying, but **backup your database** before running the migration below.
+```
+userSchema.plugin(encrypt.migrations, { .... });
+User = mongoose.model('User', userSchema);
+User.migrateToA(function(err){
+    if (err){ throw err; }
+    console.log('Migration successful');
+});
+```
+Following the migration, you can use the plugin as above.
+
+### The Quick Way
+You can also start using the plugin on an existing collection without a migration, by allowing authentication to succeed on documents unsigned documents. This is less secure, but you can always switch to the more secure options later.
+```
+userSchema.plugin(encrypt, { requireAuthenticationCode: false, .... });
+```
+
+## Migrating from Versions ≤ 0.11.0
+If you're using an earlier version of mongoose-encryption, it is recommended that you upgrade. This version adds authentication, without which an attacker with write access to your database may be able to decrypt documents they should not otherwise be able to access, depending on the details of your application.
+
+- Resolve breaking changes
+    - Rename `key` -> `encryptionKey`
+    - Add `signingKey` as 64-byte base64 string (generate with `openssl rand -base64 64`)
+    - Run migrations
+        - If you have encrypted subdocuments, first run the class method `migrateSubDocsToA()` on the parent collection
+
+          ```
+          // Only if there are encrypted subdocuments
+          // Prepends plugin version to _ct
+          userSchema.plugin(encrypt.migrations, { .... });
+          User = mongoose.model('User', userSchema);
+          User.migrateSubDocsToA('locationsOfGold', function(err){
+              if (err){ throw err; }
+              console.log('Subdocument migration successful');
+          });
+          ```
+
+        - Run the class method `migrateToA()` on any encrypted collections (that are not themselves subdocuments)
+
+          ```
+          // Prepends plugin version to _ct and signs all documents
+          userSchema.plugin(encrypt.migrations, { .... });
+          User = mongoose.model('User', userSchema);
+          User.migrateToA(function(err){
+              if (err){ throw err; }
+              console.log('Migration successful');
+          });
+          ```
+
+- Suggestions
+    - Set `additionalAuthenticatedFields` to include, at minimum, all fields involved in authorizing access to a document in your application
+    - If using encrypted subdocuments, note additional recommendations [here](#encrypt-specific-fields-of-sub-docs)
+- Deprecations
+    - Rename `fields` -> `encryptedFields`
+    - Rename `exclude` -> `excludeFromEncryption`
 
 ## Pros & Cons of Encrypting Multiple Fields at Once
 
@@ -129,10 +274,10 @@ Disadvantages:
 
 ## Security Notes
 
-- Always store your encryption key outside of version control and separate from your database. An environment variable on your application server works well for this.
+- Always store your keys and secrets outside of version control and separate from your database. An environment variable on your application server works well for this.
 - Additionally, store your encryption key offline somewhere safe. If you lose it, there is no way to retrieve your encrypted data.
 - Encrypting passwords is no substitute for appropriately hashing them. [bcrypt](https://github.com/ncb000gt/node.bcrypt.js) is one great option. Here's one [nice implementation](http://blog.mongodb.org/post/32866457221/password-authentication-with-mongoose-part-1). Once you've already hashed the password, you may as well encrypt it too. Defense in depth, as they say. Just add the mongoose-encryption plugin to the schema after any hashing middleware.
-- If an attacker gains access to your application server, they likely have access to both the database and the key. At that point, encryption does you no good.
+- If an attacker gains access to your application server, they likely have access to both the database and the key. At that point, neither encryption nor authentication do you any good.
 
 
 ## How to Run Unit Tests
@@ -144,14 +289,17 @@ Disadvantages:
 
 ## Security Issue Reporting / Disclaimer
 
-None of the authors are security experts. We relied on accepted tools and practices, and tried hard to make this tool solid and well-tested, but pobody's nerfect. Please look over the code carefully before using it (and note the legal disclaimer below). **If you find or suspect any security-related issues, please email us at security@cinchfinancial.com** and we will get right on it. For non-security-related issues, please open a Github issue or pull request.
+None of the authors are security experts. We relied on accepted tools and practices, and tried hard to make this tool solid and well-tested, but nobody's perfect. Please look over the code carefully before using it (and note the legal disclaimer below). **If you find or suspect any security-related issues, please email us at security@cinchfinancial.com** and we will get right on it. For non-security-related issues, please open a Github issue or pull request.
 
+## Acknowledgements
+
+Huge thanks goes out to @stash for pointing out the limitations of earlier versions of this plugin which lacked authentication and providing invaluable guidance and review on version 0.12.0.
 
 ## License
 
 The MIT License (MIT)
 
-Copyright (c) 2014 Joseph Goldbeck and Connect Financial, LLC
+Copyright (c) 2014-2015 Joseph Goldbeck and Connect Financial, LLC
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

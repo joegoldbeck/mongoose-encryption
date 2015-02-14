@@ -1,44 +1,63 @@
 mongoose = require 'mongoose'
+bufferEqual = require 'buffer-equal'
 sinon = require 'sinon'
 chai = require 'chai'
 assert = chai.assert
 mongoose.connect 'mongodb://localhost/mongoose-encryption-test'
 
 encryptionKey = 'CwBDwGUwoM5YzBmzwWPSI+KjBKvWHaablbrEiDYh43Q='
+signingKey = 'dLBm74RU4NW3e2i3QSifZDNXIXBd54yr7mZp0LKugVUa1X1UP9qoxoa3xfA7Ea4kdVL+JsPg9boGfREbPCb+kw=='
+secret = 'correct horse battery staple CtYC/wFXnLQ1Dq8lYZSbnDuz8fTYMALPfgCqdgtpcrc'
 
 encrypt = require '../index.js'
 
 BasicEncryptedModel = null
 
-before ->
-  BasicEncryptedModelSchema = mongoose.Schema
-    text: type: String
-    bool: type: Boolean
-    num: type: Number
-    date: type: Date
-    id2: type: mongoose.Schema.Types.ObjectId
-    arr: [ type: String ]
-    mix: type: mongoose.Schema.Types.Mixed
-    buf: type: Buffer
-    idx: type: String, index: true
+BasicEncryptedModelSchema = mongoose.Schema
+  text: type: String
+  bool: type: Boolean
+  num: type: Number
+  date: type: Date
+  id2: type: mongoose.Schema.Types.ObjectId
+  arr: [ type: String ]
+  mix: type: mongoose.Schema.Types.Mixed
+  buf: type: Buffer
+  idx: type: String, index: true
 
-  BasicEncryptedModelSchema.plugin encrypt, key: encryptionKey
+BasicEncryptedModelSchema.plugin encrypt, secret: secret
 
-  BasicEncryptedModel = mongoose.model 'Simple', BasicEncryptedModelSchema
+BasicEncryptedModel = mongoose.model 'Simple', BasicEncryptedModelSchema
 
 describe 'encrypt plugin', ->
   it 'should add field _ct of type Buffer to the schema', ->
-    encryptedSchema = mongoose.Schema({}).plugin(encrypt, key: encryptionKey)
+    encryptedSchema = mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
     assert.property encryptedSchema.paths, '_ct'
     assert.propertyVal encryptedSchema.paths._ct, 'instance', 'Buffer'
 
+  it 'should add field _ac of type Buffer to the schema', ->
+    encryptedSchema = mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
+    assert.property encryptedSchema.paths, '_ac'
+    assert.propertyVal encryptedSchema.paths._ac, 'instance', 'Buffer'
+
   it 'should expose an encrypt method on documents', ->
-    EncryptFnTestModel = mongoose.model 'EncryptFnTest', mongoose.Schema({}).plugin(encrypt, key: encryptionKey)
+    EncryptFnTestModel = mongoose.model 'EncryptFnTest', mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
     assert.isFunction (new EncryptFnTestModel).encrypt
 
   it 'should expose a decrypt method on documents', ->
-    DecryptFnTestModel = mongoose.model 'DecryptFnTest', mongoose.Schema({}).plugin(encrypt, key: encryptionKey)
+    DecryptFnTestModel = mongoose.model 'DecryptFnTest', mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
     assert.isFunction (new DecryptFnTestModel).decrypt
+
+  it 'should expose a decryptSync method on documents', ->
+    DecryptSyncFnTestModel = mongoose.model 'DecryptSyncFnTest', mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
+    assert.isFunction (new DecryptSyncFnTestModel).decryptSync
+
+  it 'should expose a sign method on documents', ->
+    SignFnTestModel = mongoose.model 'SignFnTest', mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
+    assert.isFunction (new SignFnTestModel).sign
+
+  it 'should expose a authenticateSync method on documents', ->
+    AuthenticateSyncFnTestModel = mongoose.model 'AuthenticateSyncFnTest', mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
+    assert.isFunction (new AuthenticateSyncFnTestModel).authenticateSync
 
 describe 'new EncryptedModel', ->
   it 'should remain unaltered', (done) ->
@@ -71,10 +90,16 @@ describe 'new EncryptedModel', ->
 
 describe 'document.save()', ->
   before ->
-    sinon.spy BasicEncryptedModel.prototype, 'encrypt'
-    sinon.spy BasicEncryptedModel.prototype, 'decryptSync'
+    @sandbox = sinon.sandbox.create()
+    @sandbox.spy BasicEncryptedModel.prototype, 'sign'
+    @sandbox.spy BasicEncryptedModel.prototype, 'encrypt'
+    @sandbox.spy BasicEncryptedModel.prototype, 'decryptSync'
+
+  after ->
+    @sandbox.restore()
 
   beforeEach (done) ->
+    BasicEncryptedModel.prototype.sign.reset()
     BasicEncryptedModel.prototype.encrypt.reset()
     BasicEncryptedModel.prototype.decryptSync.reset()
 
@@ -110,8 +135,9 @@ describe 'document.save()', ->
       mix: $exists: false
       buf: $exists: false
     , (err, docs) ->
+      assert.equal err, null
       assert.lengthOf docs, 1
-      done err
+      done()
 
   it 'returns decrypted data after save', (done) ->
     @simpleTestDoc2.save (err, doc) ->
@@ -125,10 +151,13 @@ describe 'document.save()', ->
       assert.deepEqual doc.buf, new Buffer 'abcdefg'
       done err
 
-   it 'should have called encrypt then decrypt', ->
+   it 'should have called encryptSync then authenticateSync then decryptSynd', ->
+    assert.equal @simpleTestDoc2.sign.callCount, 1
     assert.equal @simpleTestDoc2.encrypt.callCount, 1
     assert.equal @simpleTestDoc2.decryptSync.callCount, 1
     assert @simpleTestDoc2.encrypt.calledBefore @simpleTestDoc2.decryptSync
+    assert @simpleTestDoc2.encrypt.calledBefore @simpleTestDoc2.sign, 'encrypted before signed'
+    assert @simpleTestDoc2.sign.calledBefore @simpleTestDoc2.decryptSync, 'signed before decrypted'
 
 describe 'document.save() when only certain fields are encrypted', ->
   before ->
@@ -136,7 +165,7 @@ describe 'document.save() when only certain fields are encrypted', ->
       encryptedText: type: String
       unencryptedText: type: String
 
-    PartiallyEncryptedModelSchema.plugin encrypt, key: encryptionKey, fields: ['encryptedText']
+    PartiallyEncryptedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'PartiallyEncrypted', encryptedFields: ['encryptedText']
 
     @PartiallyEncryptedModel = mongoose.model 'PartiallyEncrypted', PartiallyEncryptedModelSchema
 
@@ -173,14 +202,17 @@ describe 'document.save() when only certain fields are encrypted', ->
       assert.throw -> JSON.parse @partiallyEncryptedDoc.toObject()._ct.toString(), 'ciphertext is not parsable json'
       done()
 
-  it 'should not overwrite _ct when saved after a find that didnt retrieve _ct', (done) ->
+  it 'should not overwrite _ct or _ac when saved after a find that didnt retrieve _ct or _ac', (done) ->
     @PartiallyEncryptedModel.findById(@partiallyEncryptedDoc).select('unencryptedText').exec (err, doc) =>
       assert.equal err, null
       assert.equal doc._ct, undefined
+      assert.equal doc._ac, undefined
       assert.propertyVal doc, 'unencryptedText', 'Unencrypted Text', 'selected unencrypted fields should be found'
       doc.save (err) =>
         assert.equal err, null
-        @PartiallyEncryptedModel.findById(@partiallyEncryptedDoc).select('unencryptedText _ct').exec (err, finalDoc) ->
+        # TODO really we should combine ciphertext and authenticated text so you can't only select one
+        @PartiallyEncryptedModel.findById(@partiallyEncryptedDoc).select('unencryptedText _ct _ac').exec (err, finalDoc) ->
+          assert.equal err, null
           assert.equal finalDoc._ct, undefined
           assert.propertyVal finalDoc, 'unencryptedText', 'Unencrypted Text', 'selected unencrypted fields should still be found after the select -> save'
           assert.propertyVal finalDoc, 'encryptedText', 'Encrypted Text', 'encrypted fields werent overwritten during the select -> save'
@@ -206,7 +238,6 @@ describe 'EncryptedModel.create()', ->
 
   it 'when doc created, it should pass an unencrypted version to the callback', (done) ->
     BasicEncryptedModel.create @docContents, (err, doc) ->
-      console.log doc
       assert.equal err, null
       assert.propertyVal doc, 'text', 'Unencrypted text'
       assert.propertyVal doc, 'bool', true
@@ -247,7 +278,12 @@ describe 'EncryptedModel.create()', ->
 
 describe 'EncryptedModel.find()', ->
   simpleTestDoc3 = null
+
+
   before (done) ->
+    @sandbox = sinon.sandbox.create()
+    @sandbox.spy BasicEncryptedModel.prototype, 'authenticateSync'
+    @sandbox.spy BasicEncryptedModel.prototype, 'decryptSync'
     simpleTestDoc3 = new BasicEncryptedModel
       text: 'Unencrypted text'
       bool: true
@@ -261,7 +297,12 @@ describe 'EncryptedModel.find()', ->
       assert.equal err, null
       done()
 
+  beforeEach ->
+    BasicEncryptedModel.prototype.authenticateSync.reset()
+    BasicEncryptedModel.prototype.decryptSync.reset()
+
   after (done) ->
+    @sandbox.restore()
     simpleTestDoc3.remove (err) ->
       assert.equal err, null
       done()
@@ -298,6 +339,31 @@ describe 'EncryptedModel.find()', ->
       assert.isArray doc
       assert.lengthOf doc, 0
       done()
+
+  it 'should have called authenticateSync then decryptSync', (done) ->
+    BasicEncryptedModel.findById simpleTestDoc3._id, (err, doc) ->
+      assert.equal err, null
+      assert.ok doc
+      assert.equal doc.authenticateSync.callCount, 1
+      assert.equal doc.decryptSync.callCount, 1
+      assert doc.authenticateSync.calledBefore doc.decryptSync, 'authenticated before decrypted'
+      done()
+
+  it 'if all authenticated fields selected, should not throw an error', (done) ->
+    BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ct _ac').exec (err, doc) ->
+      assert.equal err, null
+      assert.propertyVal doc, 'text', 'Unencrypted text'
+      assert.propertyVal doc, 'bool', true
+      assert.propertyVal doc, 'num', 42
+      done()
+
+  it 'if only some authenticated fields selected, should throw an error', (done) ->
+    BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ct').exec (err, doc) ->
+      assert.ok err
+      BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ac').exec (err, doc) ->
+        assert.ok err
+        done()
+
 
 describe 'EncryptedModel.find() lean option', ->
   simpleTestDoc4 = null
@@ -529,14 +595,14 @@ describe 'document.decryptSync()', ->
     done()
 
 
-describe '"fields" option', ->
-  it 'should encrypt fields iff they are in the passed in "fields" array even if those fields are indexed', (done) ->
+describe '"encryptedFields" option', ->
+  it 'should encrypt fields iff they are in the passed in "encryptedFields" array even if those fields are indexed', (done) ->
     EncryptedFieldsModelSchema = mongoose.Schema
       text: type: String, index: true
       bool: type: Boolean
       num: type: Number
 
-    EncryptedFieldsModelSchema.plugin encrypt, key: encryptionKey, fields: ['text', 'bool']
+    EncryptedFieldsModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['text', 'bool']
 
     FieldsEncryptedModel = mongoose.model 'Fields', EncryptedFieldsModelSchema
 
@@ -564,7 +630,7 @@ describe '"fields" option', ->
       bool: type: Boolean
       num: type: Number
 
-    EncryptedFieldsOverrideModelSchema.plugin encrypt, key: encryptionKey, fields: ['text', 'bool'], exclude: ['bool']
+    EncryptedFieldsOverrideModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFieldsOverride', encryptedFields: ['text', 'bool'], excludeFromEncryption: ['bool']
 
     FieldsOverrideEncryptedModel = mongoose.model 'FieldsOverride', EncryptedFieldsOverrideModelSchema
 
@@ -587,15 +653,15 @@ describe '"fields" option', ->
         done()
 
 
-describe '"exclude" option', ->
-  it 'should encrypt all non-indexed fields except those in the passed-in "exclude" array', (done) ->
+describe '"excludeFromEncryption" option', ->
+  it 'should encrypt all non-indexed fields except those in the passed-in "excludeFromEncryption" array', (done) ->
     ExcludeEncryptedModelSchema = mongoose.Schema
       text: type: String
       bool: type: Boolean
       num: type: Number
       idx: type: String, index: true
 
-    ExcludeEncryptedModelSchema.plugin encrypt, key: encryptionKey, exclude: ['num']
+    ExcludeEncryptedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'ExcludeEncrypted', excludeFromEncryption: ['num']
 
     ExcludeEncryptedModel = mongoose.model 'Exclude', ExcludeEncryptedModelSchema
 
@@ -626,7 +692,7 @@ describe 'Array EmbeddedDocument', ->
       ChildModelSchema = mongoose.Schema
         text: type: String
 
-      ChildModelSchema.plugin encrypt, key: encryptionKey
+      ChildModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
 
       ParentModelSchema = mongoose.Schema
         text: type: String
@@ -642,7 +708,11 @@ describe 'Array EmbeddedDocument', ->
       childDoc = new @ChildModel
         text: 'Child unencrypted text'
 
+      childDoc2 = new @ChildModel
+        text: 'Second unencrypted text'
+
       @parentDoc.children.addToSet childDoc
+      @parentDoc.children.addToSet childDoc2
 
       @parentDoc.save done
 
@@ -659,6 +729,7 @@ describe 'Array EmbeddedDocument', ->
           'children._ct': $exists: true
           'children.text': $exists: false
         , (err, docs) ->
+          assert.equal err, null
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
           done()
@@ -675,18 +746,42 @@ describe 'Array EmbeddedDocument', ->
           assert.notProperty doc.children[0], '_ct'
           done()
 
+    describe 'tampering with child documents by swapping their ciphertext', ->
+      it 'should not cause an error because embedded documents are not self-authenticated', (done) ->
+        @ParentModel.findById(@parentDoc._id).lean().exec (err, doc) =>
+          assert.equal err, null
+          assert.isArray doc.children
+
+          childDoc1CipherText = doc.children[0]._ct
+          childDoc2CipherText = doc.children[1]._ct
+
+          @ParentModel.update { _id: @parentDoc._id }
+            , { $set : {'children.0._ct': childDoc2CipherText, 'children.1._ct': childDoc1CipherText } }
+            , (err) =>
+              assert.equal err, null
+              @ParentModel.findById @parentDoc._id, (err, doc) ->
+                assert.equal err, null
+                assert.isArray doc.children
+                assert.property doc.children[0], 'text', 'Second unencrypted text', 'Ciphertext was swapped'
+                assert.property doc.children[1], 'text', 'Child unencrypted text', 'Ciphertext was swapped'
+                done()
+
   describe 'when child and parent are encrypted', ->
     before ->
       ChildModelSchema = mongoose.Schema
         text: type: String
 
-      ChildModelSchema.plugin encrypt, key: encryptionKey
+      ChildModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
 
       ParentModelSchema = mongoose.Schema
         text: type: String
         children: [ChildModelSchema]
 
-      ParentModelSchema.plugin encrypt, key: encryptionKey, fields: ['text']
+      ParentModelSchema.plugin encrypt,
+        encryptionKey: encryptionKey
+        signingKey: signingKey
+        encryptedFields: ['text']
+        additionalAuthenticatedFields: ['children']
 
       @ParentModel = mongoose.model 'ParentBoth', ParentModelSchema
       @ChildModel = mongoose.model 'ChildBoth', ChildModelSchema
@@ -698,7 +793,11 @@ describe 'Array EmbeddedDocument', ->
       childDoc = new @ChildModel
         text: 'Child unencrypted text'
 
+      childDoc2 = new @ChildModel
+        text: 'Second unencrypted text'
+
       @parentDoc.children.addToSet childDoc
+      @parentDoc.children.addToSet childDoc2
 
       @parentDoc.save done
 
@@ -718,6 +817,7 @@ describe 'Array EmbeddedDocument', ->
           'children._ct': $exists: true
           'children.text': $exists: false
         , (err, docs) ->
+          assert.equal err, null
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
           done()
@@ -734,13 +834,32 @@ describe 'Array EmbeddedDocument', ->
           assert.notProperty doc.children[0], '_ct'
           done()
 
+
+    describe 'when child field is in additionalAuthenticatedFields on parent and child documents are tampered with by swapping their ciphertext', ->
+      it 'should pass an error', (done) ->
+        @ParentModel.findById(@parentDoc._id).lean().exec (err, doc) =>
+          assert.equal err, null
+          assert.isArray doc.children
+
+          childDoc1CipherText = doc.children[0]._ct
+          childDoc2CipherText = doc.children[1]._ct
+
+          @ParentModel.update { _id: @parentDoc._id }
+            , { $set : {'children.0._ct': childDoc2CipherText, 'children.1._ct': childDoc1CipherText } }
+            , (err) =>
+              assert.equal err, null
+              @ParentModel.findById @parentDoc._id, (err, doc) ->
+                assert.ok err, 'There was an error'
+                assert.propertyVal err, 'message', 'Authentication failed'
+                done()
+
   describe 'when entire parent is encrypted', ->
     before ->
       ParentModelSchema = mongoose.Schema
         text: type: String
         children: [text: type: String]
 
-      ParentModelSchema.plugin encrypt, key: encryptionKey
+      ParentModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
 
       @ParentModel = mongoose.model 'ParentEntire', ParentModelSchema
 
@@ -766,6 +885,7 @@ describe 'Array EmbeddedDocument', ->
           'children': $exists: false
           'children.text': $exists: false
         , (err, docs) ->
+          assert.equal err, null
           assert.lengthOf docs, 1
           assert.propertyVal docs[0], 'text', 'Unencrypted text'
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
@@ -789,8 +909,8 @@ describe 'Array EmbeddedDocument', ->
         text: type: String
 
       ChildModelSchema.plugin encrypt,
-        key: encryptionKey
-        fields: ['text']
+        encryptionKey: encryptionKey, signingKey: signingKey
+        encryptedFields: ['text']
 
       ParentModelSchema = mongoose.Schema
         text: type: String
@@ -823,8 +943,8 @@ describe 'Array EmbeddedDocument', ->
         text: type: String
 
       ChildModelSchema.plugin encrypt,
-        key: encryptionKey
-        fields: ['text']
+        encryptionKey: encryptionKey, signingKey: signingKey
+        encryptedFields: ['text']
 
       ParentModelSchema = mongoose.Schema
         text: type: String
@@ -859,8 +979,8 @@ describe 'Array EmbeddedDocument', ->
         text: type: String
 
       ChildModelSchema.plugin encrypt,
-        key: encryptionKey
-        fields: ['text']
+        encryptionKey: encryptionKey, signingKey: signingKey
+        encryptedFields: ['text']
 
       ParentModelSchema = mongoose.Schema
         text: type: String
@@ -869,8 +989,8 @@ describe 'Array EmbeddedDocument', ->
 
       ParentModelSchema.plugin encrypt.encryptedChildren
       ParentModelSchema.plugin encrypt,
-        key: encryptionKey
-        fields: ['encryptedText']
+        encryptionKey: encryptionKey, signingKey: signingKey
+        encryptedFields: ['encryptedText']
 
       @ParentModel2 = mongoose.model 'ParentWithBothPlugins', ParentModelSchema
       @ChildModel2 = mongoose.model 'Child2', ChildModelSchema
@@ -908,4 +1028,684 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           assert.property doc.children[0], 'text', 'Child unencrypted text'
+          done()
+
+
+describe 'document.sign()', ->
+  before (done) ->
+    @testDoc = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+      idx: 'Indexed'
+
+    @testDoc.sign (err) ->
+      assert.equal err, null
+      done()
+
+  after (done) ->
+    @testDoc.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'should return an signed version', (done) ->
+    assert.property @testDoc, '_ac'
+    @initialAC = @testDoc._ac
+    done()
+
+  it 'should use the same signature if signed twice', (done) ->
+    @testDoc.sign (err) =>
+      assert.equal err, null
+      assert.property @testDoc, '_ac'
+      assert.ok bufferEqual(@testDoc._ac, @initialAC)
+      done()
+
+describe 'document.sign() on encrypted document', ->
+  before (done) ->
+    @testDoc = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+      idx: 'Indexed'
+
+    @testDoc.encrypt (err) =>
+      assert.equal err, null
+      @testDoc.sign (err) ->
+        assert.equal err, null
+        done()
+
+  after (done) ->
+    @testDoc.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'should return an signed version', (done) ->
+    assert.property @testDoc, '_ac'
+    @initialAC = @testDoc._ac
+    done()
+
+  it 'should use the same signature if signed twice', (done) ->
+    @testDoc.sign (err) =>
+      assert.equal err, null
+      assert.property @testDoc, '_ac'
+      assert.ok bufferEqual(@testDoc._ac, @initialAC)
+      done()
+
+
+describe 'document.authenticateSync()', ->
+  @testDocAS = null
+  beforeEach (done) ->
+    @testDocAS = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+      idx: 'Indexed'
+
+    @testDocAS.sign (err) ->
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @testDocAS.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'should return without an error if document is signed and unmodified', ->
+    assert.doesNotThrow =>
+      @testDocAS.authenticateSync()
+
+  it 'should not throw error if a non-authenticated field has been modified', ->
+    @testDocAS.num = 48
+    assert.doesNotThrow =>
+      @testDocAS.authenticateSync()
+
+
+  it 'should throw error if _id has been modified', ->
+    @testDocAS._id = new mongoose.Types.ObjectId()
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _ac has been modified randomly', ->
+    @testDocAS._ac = new Buffer 'some random buffer'
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _ac has been modified to have authenticated fields = []', ->
+    acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH
+    blankArrayBuffer = new Buffer JSON.stringify([])
+    bareBuffer = new Buffer acWithoutAFLength
+    bareBuffer.copy(@testDocAS._ac, 0, 0, acWithoutAFLength)
+    @testDocAS._ac = Buffer.concat [bareBuffer, blankArrayBuffer]
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _ac has been modified to have no authenticated fields section', ->
+    acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH
+    poisonBuffer = new Buffer acWithoutAFLength
+    poisonBuffer.copy(@testDocAS._ac, 0, 0, acWithoutAFLength)
+    @testDocAS._ac = poisonBuffer
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _ac has been set to null', ->
+    @testDocAS._ac = null
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _ac has been set to undefined', ->
+    @testDocAS._ac = undefined
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+
+  it 'should throw error if _ct has been added', ->
+    @testDocAS._ct = new Buffer('Poison')
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+
+describe 'document.authenticateSync() on encrypted documents', ->
+  @testDocAS = null
+  beforeEach (done) ->
+    @testDocAS = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+      idx: 'Indexed'
+
+    @testDocAS.encrypt (err) =>
+      assert.equal err, null
+      @testDocAS.sign (err) ->
+        assert.equal err, null
+        done()
+
+  afterEach (done) ->
+    @testDocAS.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'should return without an error if document is signed and unmodified', ->
+    assert.doesNotThrow =>
+      @testDocAS.authenticateSync()
+
+  it 'should not throw error if a non-authenticated field has been modified', ->
+    @testDocAS.num = 48
+    assert.doesNotThrow =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _id has been modified', ->
+    @testDocAS._id = new mongoose.Types.ObjectId()
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+  it 'should throw error if _ct has been modified', ->
+    @testDocAS._ct = new Buffer('Poison')
+    assert.throws =>
+      @testDocAS.authenticateSync()
+
+
+describe 'document.authenticate()', -> # these are mostly covered in .authenticateSync. this checks the errors more closely
+  @testDocA = null
+  beforeEach (done) ->
+    @testDocA = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+      idx: 'Indexed'
+
+    @testDocA.sign (err) ->
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @testDocA.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'should pass error if _ac has been modified to have authenticated fields = []', (done) ->
+    acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH
+    blankArrayBuffer = new Buffer JSON.stringify([])
+    bareBuffer = new Buffer acWithoutAFLength
+    bareBuffer.copy(@testDocA._ac, 0, 0, acWithoutAFLength)
+    @testDocA._ac = Buffer.concat [bareBuffer, blankArrayBuffer]
+    @testDocA.authenticate (err) ->
+      assert.ok err
+      assert.equal err.message, '_id must be in array of fields to authenticate'
+      done()
+
+  it 'should pass error if _ac has been modified to have no authenticated fields section', (done)  ->
+    acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH
+    poisonBuffer = new Buffer acWithoutAFLength
+    poisonBuffer.copy(@testDocA._ac, 0, 0, acWithoutAFLength)
+    @testDocA._ac = poisonBuffer
+    @testDocA.authenticate (err) ->
+      assert.ok err
+      assert.equal err.message, '_ac is too short and has likely been cut off or modified'
+      done()
+
+
+describe 'Tampering with an encrypted document', ->
+  before (done) ->
+    @testDoc = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+      idx: 'Indexed'
+
+    @testDoc2 = new BasicEncryptedModel
+      text: 'Unencrypted text2'
+      bool: true
+      num: 46
+      date: new Date '2014-05-19T16:22:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce210'
+      arr: ['alpha', 'dela']
+      mix: { str: 'A strings', bool: true }
+      buf: new Buffer 'dssd'
+      idx: 'Indexed again'
+
+    @testDoc.save (err) =>
+      assert.equal err, null
+      @testDoc2.save (err) =>
+        assert.equal err, null
+        done()
+
+  after (done) ->
+    @testDoc.remove (err) =>
+      assert.equal err, null
+      @testDoc2.remove (err) ->
+        assert.equal err, null
+        done()
+
+  it 'should throw an error on .find() if _ct is swapped from another document', (done) ->
+    BasicEncryptedModel.findOne(_id: @testDoc2._id).lean().exec (err, doc2) =>
+      assert.equal err, null
+      ctForSwap = doc2._ct.buffer
+      BasicEncryptedModel.update({_id: @testDoc._id}, {$set: _ct: doc2._ct}).exec (err, num) =>
+        assert.equal err, null
+        assert.equal num, 1
+        BasicEncryptedModel.findOne(_id: @testDoc._id).exec (err, doc) =>
+          assert.ok err
+          done()
+
+
+describe 'additionalAuthenticatedFields option', ->
+  AuthenticatedFieldsModelSchema = mongoose.Schema
+    text: type: String
+    bool: type: Boolean
+    num: type: Number
+
+  AuthenticatedFieldsModelSchema.plugin encrypt,
+    encryptionKey: encryptionKey
+    signingKey: signingKey
+    collectionId: 'AuthenticatedFields'
+    encryptedFields: ['text']
+    additionalAuthenticatedFields: ['bool']
+
+  AuthenticatedFieldsModel = mongoose.model 'AuthenticatedFields', AuthenticatedFieldsModelSchema
+
+  @testDocAF = null
+  beforeEach (done) ->
+    @testDocAF = new AuthenticatedFieldsModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+
+    @testDocAF.save (err) ->
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @testDocAF.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'find should succeed if document is unmodified', (done) ->
+    AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
+      assert.equal err, null
+      done()
+
+  it 'find should succeed if non-authenticated field is modified directly', (done) ->
+    AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: num: 48}).exec (err, num) =>
+      assert.equal err, null
+      assert.equal num, 1
+      AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
+        assert.equal err, null
+        assert.propertyVal doc, 'num', 48
+        done()
+
+  it 'find should fail if non-authenticated field is modified directly', (done) ->
+    AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: bool: false}).exec (err, num) =>
+      assert.equal err, null
+      assert.equal num, 1
+      AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
+        assert.ok err, 'There was an error'
+        assert.propertyVal err, 'message', 'Authentication failed'
+        done()
+
+describe '"requireAuthenticationCode" option', ->
+  describe 'set to false and plugin used with existing collection without a migration', ->
+
+    LessSecureSchema = mongoose.Schema
+      text: type: String
+      bool: type: Boolean
+      num: type: Number
+
+    LessSecureSchema.plugin encrypt,
+      encryptionKey: encryptionKey
+      signingKey: signingKey
+      requireAuthenticationCode: false
+
+    LessSecureModel = mongoose.model 'LessSecure', LessSecureSchema
+
+    before (done) ->
+      plainDoc =
+        text: 'Plain'
+        bool: true
+
+      plainDoc2 =
+        bool: false
+        num: 33
+
+      LessSecureModel.collection.insert [plainDoc, plainDoc2], (err, docs) =>
+        assert.equal err, null
+        @docId = docs[0]._id
+        @doc2Id = docs[1]._id
+        done()
+
+    after (done) ->
+      LessSecureModel.remove {}, (err) ->
+        assert.equal err, null
+        done()
+
+    it 'should just work', (done) ->
+      LessSecureModel.findById @docId, (err, unmigratedDoc1) =>
+        assert.equal err, null, 'There should be no authentication error'
+        assert.propertyVal unmigratedDoc1, 'text', 'Plain'
+        assert.propertyVal unmigratedDoc1, 'bool', true
+        unmigratedDoc1.save (err) =>
+          assert.equal err, null
+
+          LessSecureModel.findById(@docId).lean().exec (err, rawDoc1) =>
+            assert.equal err, null
+            assert.notProperty rawDoc1, 'text', 'raw in db shouldnt show encrypted properties'
+            assert.notProperty rawDoc1, 'bool'
+            assert.property rawDoc1, '_ct', 'raw in db should have ciphertext'
+            assert.property rawDoc1, '_ac', 'raw in db should have authentication code'
+
+            LessSecureModel.findById @docId, (err, unmigratedDoc1) =>
+              assert.equal err, null
+              assert.propertyVal unmigratedDoc1, 'text', 'Plain'
+              assert.propertyVal unmigratedDoc1, 'bool', true
+              done()
+
+describe 'migrations', ->
+  describe 'migrateToA static model method', ->
+    describe 'on collection encrypted with previous version', ->
+      OriginalSchemaObject =
+        text: type: String
+        bool: type: Boolean
+        num: type: Number
+        date: type: Date
+        id2: type: mongoose.Schema.Types.ObjectId
+        arr: [ type: String ]
+        mix: type: mongoose.Schema.Types.Mixed
+        buf: type: Buffer
+        idx: type: String, index: true
+        unencryptedText: type: String
+
+      OriginalSchema = mongoose.Schema OriginalSchemaObject
+
+      OriginalSchema.plugin encrypt,
+        encryptionKey: encryptionKey
+        signingKey: signingKey
+        excludeFromEncryption: ['unencryptedText']
+
+      OriginalModel = mongoose.model 'Old', OriginalSchema
+
+      MigrationSchema = mongoose.Schema OriginalSchemaObject
+
+      MigrationSchema.plugin encrypt.migrations,  # add migrations plugin
+        encryptionKey: encryptionKey
+        signingKey: signingKey
+        excludeFromEncryption: ['unencryptedText']
+        collectionId: 'Old'
+
+      MigrationModel = mongoose.model 'Migrate', MigrationSchema, 'olds' # same collection as original model
+
+      before (done) ->
+        # this buffer comes from a doc saved with the version of mongoose-encrypt without authentication
+        bufferEncryptedWithOldVersion = new Buffer JSON.parse "[130,155,222,38,127,97,89,38,0,26,14,38,24,35,147,38,119,60,112,58,75,92,205,170,72,4,149,87,48,23,162,92,92,59,16,76,124,225,243,209,155,91,213,99,95,49,110,233,229,165,6,128,162,246,117,146,209,170,138,43,74,172,159,212,237,4,0,112,55,3,132,46,80,183,66,236,176,58,221,47,153,248,211,71,76,148,215,217,66,169,77,11,133,134,128,50,166,231,164,110,136,95,207,187,179,101,208,230,6,77,125,49,211,24,210,160,99,166,76,180,183,57,179,129,85,6,64,34,210,114,217,176,49,50,122,192,27,189,146,125,212,133,40,100,7,190,2,237,166,89,131,31,197,225,211,79,205,208,185,209,252,151,159,6,58,140,122,151,99,241,211,129,148,105,33,198,18,118,235,202,55,7,20,138,27,31,173,181,170,97,15,193,174,243,100,175,135,164,154,239,158,217,205,109,165,84,38,37,2,55,5,67,20,82,247,116,167,67,250,84,91,204,244,92,217,86,177,71,174,244,136,169,57,140,226,85,239,160,128,10]"
+        docEncryptedWithOldVersion = _ct: bufferEncryptedWithOldVersion
+
+        bufferEncryptedWithOldVersion2 = new Buffer JSON.parse "[54,71,156,112,212,239,137,202,17,196,176,29,93,28,27,150,212,76,5,153,218,234,68,160,236,158,155,221,186,180,72,0,254,236,240,38,167,173,132,20,235,170,98,78,16,221,86,253,121,49,152,28,40,152,216,45,223,201,241,68,85,1,52,2,6,25,25,120,29,75,246,117,164,103,252,40,16,163,45,240]"
+        docEncryptedWithOldVersion2 =
+          _ct: bufferEncryptedWithOldVersion2
+          unencryptedText: 'Never was encrypted'
+
+        OriginalModel.collection.insert [docEncryptedWithOldVersion, docEncryptedWithOldVersion2], (err, docs) =>
+          assert.equal err, null
+          @docId = docs[0]._id
+          @doc2Id = docs[1]._id
+          OriginalModel.findById @docId, (err, doc) ->
+            assert.ok err, 'There should be an authentication error before migration'
+            assert.propertyVal err, 'message', 'Authentication code missing'
+            done()
+
+      after (done) ->
+        OriginalModel.remove {}, (err) ->
+          assert.equal err, null
+          done()
+
+      it 'should transform existing documents in collection such that they work with plugin version A', (done) ->
+        MigrationModel.migrateToA (err) =>
+          assert.equal err, null
+          OriginalModel.findById @docId, (err, migratedDoc1) =>
+            assert.equal err, null, 'There should be no authentication error after migration'
+            assert.propertyVal migratedDoc1, 'text', 'Unencrypted text'
+            assert.propertyVal migratedDoc1, 'bool', true
+            assert.propertyVal migratedDoc1, 'num', 42
+            assert.property migratedDoc1, 'date'
+            assert.equal migratedDoc1.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+            assert.propertyVal migratedDoc1, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+            assert.lengthOf migratedDoc1.arr, 2
+            assert.equal migratedDoc1.arr[0], 'alpha'
+            assert.equal migratedDoc1.arr[1], 'bravo'
+            assert.property migratedDoc1, 'mix'
+            assert.deepEqual migratedDoc1.mix, { str: 'A string', bool: false }
+            assert.property migratedDoc1, 'buf'
+            assert.equal migratedDoc1.buf.toString(), 'abcdefg'
+            assert.property migratedDoc1, '_id'
+            assert.notProperty migratedDoc1, '_ct'
+            assert.notProperty migratedDoc1, '_ac'
+
+            OriginalModel.findById @doc2Id, (err, migratedDoc2) =>
+              assert.equal err, null, 'There should be no authentication error after migration'
+              assert.propertyVal migratedDoc2, 'text', 'Some other text'
+              assert.propertyVal migratedDoc2, 'bool', false
+              assert.propertyVal migratedDoc2, 'num', 40
+              assert.propertyVal migratedDoc2, 'unencryptedText', 'Never was encrypted'
+              done()
+
+    describe 'on previously unencrypted collection', ->
+      schemaObject =
+        text: type: String
+        bool: type: Boolean
+        num: type: Number
+
+      PreviouslyUnencryptedSchema = mongoose.Schema schemaObject
+
+      PreviouslyUnencryptedSchema.plugin encrypt.migrations,
+        encryptionKey: encryptionKey
+        signingKey: signingKey
+
+      PreviouslyUnencryptedModel = mongoose.model 'FormerlyPlain', PreviouslyUnencryptedSchema
+
+
+      before (done) ->
+        plainDoc =
+          text: 'Plain'
+          bool: true
+
+        plainDoc2 =
+          bool: false
+          num: 33
+
+        PreviouslyUnencryptedModel.collection.insert [plainDoc, plainDoc2], (err, docs) =>
+          assert.equal err, null
+          @docId = docs[0]._id
+          @doc2Id = docs[1]._id
+          done()
+
+      after (done) ->
+        PreviouslyUnencryptedModel.remove {}, (err) ->
+          assert.equal err, null
+          done()
+
+      it 'should transform documents in an unencrypted collection such that they are signed and encrypted and work with plugin version A', (done) ->
+        PreviouslyUnencryptedModel.migrateToA (err) =>
+          assert.equal err, null
+
+          # add back in middleware
+          PreviouslyUnencryptedSchema.plugin encrypt,
+            encryptionKey: encryptionKey
+            signingKey: signingKey
+
+          PreviouslyUnencryptedModel.findById(@docId).lean().exec (err, migratedDoc) =>
+            assert.equal err, null
+            assert.notProperty migratedDoc, 'text', 'Should be encrypted in db after migration'
+            assert.notProperty migratedDoc, 'bool'
+            assert.property migratedDoc, '_ac'
+            assert.property migratedDoc, '_ct', 'Should have ciphertext in raw db after migration'
+
+
+            PreviouslyUnencryptedModel.findById @docId, (err, migratedDoc) =>
+              assert.equal err, null, 'There should be no authentication error after migrated'
+              assert.propertyVal migratedDoc, 'text', 'Plain'
+              assert.propertyVal migratedDoc, 'bool', true
+
+              migratedDoc.save (err) =>
+                assert.equal err, null
+
+                PreviouslyUnencryptedModel.findById(@docId).lean().exec (err, migratedDoc) =>
+                  assert.equal err, null
+                  assert.notProperty migratedDoc, 'text', 'Should be encrypted in raw db after saved'
+                  assert.notProperty migratedDoc, 'bool'
+                  assert.property migratedDoc, '_ac'
+                  assert.property migratedDoc, '_ct', 'Should have ciphertext in raw db after saved'
+                  done()
+
+  describe 'migrateSubDocsToA static model method', ->
+    describe 'on collection where subdocs encrypted with previous version', ->
+
+
+      before (done) ->
+        OriginalChildSchema = mongoose.Schema
+          text: type: String
+
+        OriginalChildSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
+
+        OriginalParentSchema = mongoose.Schema
+          text: type: String
+          children: [OriginalChildSchema]
+
+        @OriginalParentModel = mongoose.model 'ParentOriginal', OriginalParentSchema
+        @OriginalChildModel = mongoose.model 'ChildOriginal', OriginalChildSchema
+
+
+
+        MigrationChildSchema = mongoose.Schema
+          text: type: String
+
+        MigrationChildSchema.plugin encrypt.migrations,  # add migrations plugin
+                    encryptionKey: encryptionKey
+                    signingKey: signingKey
+
+        MigrationParentSchema = mongoose.Schema
+          text: type: String
+          children: [MigrationChildSchema]
+
+        MigrationParentSchema.plugin encrypt.migrations,  # add migrations plugin
+          encryptionKey: encryptionKey
+          signingKey: signingKey
+
+        @MigrationParentModel = mongoose.model 'ParentMigrate', MigrationParentSchema, 'parentoriginals'
+        @MigrationChildModel = mongoose.model 'ChildMigrate', MigrationChildSchema
+
+
+        # this buffer comes from a doc saved with the version of mongoose-encrypt without authentication
+        bufferEncryptedWithOldVersion = new Buffer JSON.parse "[21,214,250,191,178,31,137,124,48,21,38,43,100,150,146,97,102,96,173,251,244,146,145,126,14,193,188,116,132,96,90,135,177,89,255,121,6,98,213,226,92,3,128,66,93,124,46,235,52,60,144,129,245,114,246,75,233,173,60,45,63,1,117,87]"
+        bufferEncryptedWithOldVersion2 = new Buffer JSON.parse "[227,144,73,209,193,222,74,228,115,162,19,213,103,68,229,61,81,100,152,178,4,134,249,159,245,132,29,186,163,91,211,169,77,162,140,113,105,136,167,174,105,24,50,219,80,150,226,182,99,45,236,85,133,163,19,76,234,83,158,231,68,205,158,248]"
+
+        docWithChildrenFromOldVersion =
+          children: [
+            { _ct: bufferEncryptedWithOldVersion, _id: new mongoose.Types.ObjectId() }
+            { _ct: bufferEncryptedWithOldVersion2, _id: new mongoose.Types.ObjectId() }
+           ]
+
+        @OriginalParentModel.collection.insert [docWithChildrenFromOldVersion], (err, docs) =>
+          assert.equal err, null
+          @docId = docs[0]._id
+
+          @OriginalParentModel.findById @docId, (err, doc) ->
+            assert.equal err, null, 'When error in subdoc pre init hook, swallowed by mongoose'
+            assert.isArray doc.children
+            assert.lengthOf doc.children, 0, 'Children have errors in pre-init and so are no hydrated'
+            done()
+
+      after (done) ->
+        @OriginalParentModel.remove {}, (err) ->
+          assert.equal err, null
+          done()
+
+      it 'should transform existing documents in collection such that they work with plugin version A', (done) ->
+        @MigrationParentModel.migrateSubDocsToA 'children', (err) =>
+          assert.equal err, null
+
+          @OriginalParentModel.findById @docId, (err, migratedDoc) =>
+            assert.equal err, null
+            assert.isArray migratedDoc.children
+            assert.lengthOf migratedDoc.children, 2
+            assert.propertyVal migratedDoc.children[0], 'text', 'Child unencrypted text'
+            assert.propertyVal migratedDoc.children[1], 'text', 'Child2 unencrypted text'
+            done()
+
+  describe 'signAll static model method', ->
+
+    schemaObject =
+      text: type: String
+      bool: type: Boolean
+      num: type: Number
+
+    UnsignedSchema = mongoose.Schema schemaObject
+
+    UnsignedSchema.plugin encrypt.migrations,
+      encryptionKey: encryptionKey
+      signingKey: signingKey
+
+    UnsignedModel = mongoose.model 'Sign', UnsignedSchema
+
+
+    before (done) ->
+      plainDoc =
+        text: 'Plain'
+        bool: true
+
+      plainDoc2 =
+        bool: false
+        num: 33
+
+      UnsignedModel.collection.insert [plainDoc, plainDoc2], (err, docs) =>
+        assert.equal err, null
+        @docId = docs[0]._id
+        @doc2Id = docs[1]._id
+        done()
+
+    after (done) ->
+      UnsignedModel.remove {}, (err) ->
+        assert.equal err, null
+        done()
+
+    it 'should transform documents in an unsigned collection such that they are signed and work with plugin version A', (done) ->
+      UnsignedModel.signAll (err) =>
+        assert.equal err, null
+
+        # add back in middleware
+        UnsignedSchema.plugin encrypt,
+          encryptionKey: encryptionKey
+          signingKey: signingKey
+
+        UnsignedModel.findById @docId, (err, signedDoc) =>
+          assert.equal err, null, 'There should be no authentication error after signing'
+          assert.propertyVal signedDoc, 'text', 'Plain'
+          assert.propertyVal signedDoc, 'bool', true
           done()
