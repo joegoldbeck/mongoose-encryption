@@ -159,6 +159,56 @@ describe 'document.save()', ->
     assert @simpleTestDoc2.encrypt.calledBefore @simpleTestDoc2.sign, 'encrypted before signed'
     assert @simpleTestDoc2.sign.calledBefore @simpleTestDoc2.decryptSync, 'signed before decrypted'
 
+describe 'document.save() on nested document', ->
+  before ->
+    @schemaWithNest = mongoose.Schema
+      nest:
+        birdColor: type: String
+        areBirdsPretty: type: Boolean
+
+    @schemaWithNest.plugin encrypt, secret: secret
+
+    @ModelWithNest = mongoose.model 'SimpleNest', @schemaWithNest
+
+  beforeEach (done) ->
+
+    @nestTestDoc = new @ModelWithNest
+      nest:
+        birdColor: 'blue'
+        areBirdsPretty: true
+
+    @nestTestDoc.save (err) ->
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @nestTestDoc.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'encrypts nested fields', (done) ->
+    @ModelWithNest.find(
+      _id: @nestTestDoc._id
+      _ct: $exists: true
+      nest: $exists: false
+    ).lean().exec (err, docs) ->
+      assert.equal err, null
+      assert.lengthOf docs, 1
+      done()
+
+  it 'saves encrypted fields', (done) ->
+    @ModelWithNest.find
+      _id: @nestTestDoc._id
+      _ct: $exists: true
+    , (err, docs) ->
+      assert.equal err, null
+      assert.lengthOf docs, 1
+      assert.isObject docs[0].nest
+      console.log docs[0]
+      assert.propertyVal docs[0].nest, 'birdColor', 'blue'
+      assert.propertyVal docs[0].nest, 'areBirdsPretty', true
+      done()
+
 describe 'document.save() when only certain fields are encrypted', ->
   before ->
     PartiallyEncryptedModelSchema = mongoose.Schema
