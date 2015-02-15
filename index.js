@@ -75,7 +75,8 @@
 
     _.defaults(options, {
       middleware: true, // allow for skipping middleware with false
-      requireAuthenticationCode: true // allow for no authentication code on docs (not recommended)
+      requireAuthenticationCode: true, // allow for no authentication code on docs (not recommended),
+      decryptPostSave: true // allow for skipping the decryption after save for improved performance
     });
 
     // Encryption Keys //
@@ -276,20 +277,21 @@
       });
 
 
+      if (options.decryptPostSave) { // true by default
+        schema.post('save', function(doc) {
+          if (_.isFunction(doc.decryptSync)) {
+            doc.decryptSync();
+          }
 
-      schema.post('save', function(doc) {
-        if (_.isFunction(doc.decryptSync)) {
-          doc.decryptSync();
-        }
+          // Until 3.8.6, Mongoose didn't trigger post save hook on EmbeddedDocuments,
+          // instead had to call decrypt on all subDocs.
+          // ref https://github.com/LearnBoost/mongoose/issues/915
 
-        // Until 3.8.6, Mongoose didn't trigger post save hook on EmbeddedDocuments,
-        // instead had to call decrypt on all subDocs.
-        // ref https://github.com/LearnBoost/mongoose/issues/915
+          decryptEmbeddedDocs(doc);
 
-        decryptEmbeddedDocs(doc);
-
-        return doc;
-      });
+          return doc;
+        });
+      }
     }
 
 

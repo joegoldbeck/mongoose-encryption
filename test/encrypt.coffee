@@ -686,6 +686,51 @@ describe '"excludeFromEncryption" option', ->
         assert.propertyVal excludeEncryptedDoc, 'idx', 'Indexed'
         done()
 
+describe '"decryptPostSave" option', ->
+  before ->
+    HighPerformanceModelSchema = mongoose.Schema
+      text: type: String
+
+    HighPerformanceModelSchema.plugin encrypt, secret: secret, decryptPostSave: false
+
+    @HighPerformanceModel = mongoose.model 'HighPerformance', HighPerformanceModelSchema
+
+  beforeEach (done) ->
+    @doc = new @HighPerformanceModel
+      text: 'Unencrypted text'
+    done()
+
+  afterEach (done) ->
+    @HighPerformanceModel.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'saves encrypted fields correctly', (done) ->
+    @doc.save (err) =>
+      assert.equal err, null
+      @HighPerformanceModel.find
+        _id: @doc._id
+        _ct: $exists: true
+        text: $exists: false
+      , (err, docs) ->
+        assert.equal err, null
+        assert.lengthOf docs, 1
+        assert.propertyVal docs[0], 'text', 'Unencrypted text'
+        done()
+
+  it 'returns encrypted data after save', (done) ->
+    @doc.save (err, savedDoc) ->
+      assert.equal err, null
+      assert.property savedDoc, '_ct', 'Document remains encrypted after save'
+      assert.notProperty savedDoc, 'text'
+
+      savedDoc.decrypt (err) ->
+        assert.equal err, null
+        assert.notProperty savedDoc, '_ct'
+        assert.propertyVal savedDoc, 'text', 'Unencrypted text', 'Document can still be unencrypted'
+        done()
+
+
 describe 'Array EmbeddedDocument', ->
   describe 'when only child is encrypted', ->
     before ->
