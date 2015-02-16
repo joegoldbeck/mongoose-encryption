@@ -136,6 +136,32 @@ userSchema.plugin(encrypt.encryptedChildren);
 ```
 The need for `encrypt.encryptedChildren` arises because subdocument 'pre save' hooks are called before parent validation completes, and there are no subdocument hooks that fire when parent validation fails. Without the plugin, if you repair a parent doc after a failed save and then try to save again, data in the encrypted fields of the subdocuments will be lost.
 
+
+### Save Behavior
+
+By default, documents are decrypted after they are saved to the database, so that you can continue to work with them transparently.
+```
+joe = new User ({ name: 'Joe', age: 42 });
+joe.save(function(err){ // encrypted when sent to the database
+                        // decrypted in the callback
+  console.log(joe.name); // Joe
+  console.log(joe.age); // 42
+  console.log(joe._ct); // undefined
+});
+
+```
+You can turn off this behavior, and slightly improve performance, using the `decryptPostSave` option.
+```
+userSchema.plugin(encrypt, { ..., decryptPostSave: false });
+...
+joe = new User ({ name: 'Joe', age: 42 });
+joe.save(function(err){
+  console.log(joe.name); // undefined
+  console.log(joe.age); // undefined
+  console.log(joe._ct); // <Buffer 61 41 55 62 33 ...
+});
+```
+
 ### Secret String Instead of Two Keys
 
 For convenience, you can also pass in a single secret string instead of two keys.
@@ -143,6 +169,7 @@ For convenience, you can also pass in a single secret string instead of two keys
 var secret = process.env.SOME_LONG_UNGUESSABLE_STRING;
 userSchema.plugin(encrypt, { secret: secret });
 ```
+
 
 ### Changing Options
 For the most part, you can seemlessly update the plugin options. This won't immediately change what is stored in the database, but it will change how documents are saved moving forwards.
@@ -199,6 +226,7 @@ joe.sign(function(err){
 });
 ```
 There are also `decryptSync` and `authenticateSync` functions, which execute synchronously and throw if an error is hit.
+
 
 ## Getting Started with an Existing Collection
 If you are using mongoose-encryption on an empty collection, you can immediately begin to use it as above. To use it on an existing collection, you'll need to either run a migration or use less secure options.
