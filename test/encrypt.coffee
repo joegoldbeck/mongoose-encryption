@@ -1,5 +1,5 @@
 mongoose = require 'mongoose'
-bufferEqual = require 'buffer-equal'
+bufferEqual = require 'buffer-equal-constant-time'
 sinon = require 'sinon'
 chai = require 'chai'
 assert = chai.assert
