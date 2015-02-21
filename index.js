@@ -102,7 +102,8 @@
       }
     }
 
-    // Encryption Options //
+
+    // Deprecated options
 
     if (options.fields) {
       options.encryptedFields = options.fields;
@@ -113,17 +114,36 @@
       console.warn('options.fields has been deprecated. please use options.excludeFromEncryption');
     }
 
+
+    // Check no disallowed characters used in options
+
+    var fieldsUsedInOptions = _.compact(_.union(
+        options.encryptedFields,
+        options.excludeFromEncryption,
+        options.additionalAuthenticatedFields
+      ));
+
+    if (_.any(fieldsUsedInOptions, function(field){ return field.indexOf('.') !== -1 })) {
+      throw new Error("Field names containing '.' are not currently supported")
+    }
+
+
+    // Encryption Options //
+
     if (options.encryptedFields) {
       encryptedFields = _.difference(options.encryptedFields, ['_ct']);
     } else {
       excludedFields = _.union(['_id', '_ct'], options.excludeFromEncryption);
-      encryptedFields = [];
-      for (path in schema.paths) {
-        details = schema.paths[path];
-        if (excludedFields.indexOf(path) < 0 && !details._index) {
-          encryptedFields.push(path);
-        }
-      }
+      encryptedFields = _.chain(schema.paths)
+        .filter(function(pathDetails) { // exclude indexed fields
+          return !pathDetails._index })
+        .pluck('path') // get path name
+        .difference(excludedFields) // exclude excluded fields
+        .map(function(path) { // get the top level field
+          return path.split('.')[0]
+        })
+        .uniq()
+        .value()
     }
 
 
@@ -306,17 +326,25 @@
         }
         cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, encryptionKey, iv);
         objectToEncrypt = _.pick(that, encryptedFields);
+
+        // only encrypt fields that are defined
         for (field in objectToEncrypt) {
           val = objectToEncrypt[field];
           if (val === undefined) {
             delete objectToEncrypt[field];
-          } else {
-            that[field] = undefined;
           }
         }
         jsonToEncrypt = JSON.stringify(objectToEncrypt);
+
         cipher.end(jsonToEncrypt, 'utf-8', function() {
+          // add ciphertext to document
           that._ct = Buffer.concat([VERSION_BUF, iv, cipher.read()]);
+
+          // remove encrypted fields from cleartext
+          encryptedFields.forEach(function(field){
+            that[field] = undefined;
+          });
+
           cb(null);
         });
       });
