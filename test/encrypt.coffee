@@ -1742,17 +1742,21 @@ describe 'migrations', ->
         @OriginalParentModel.collection.insert [docWithChildrenFromOldVersion], (err, docs) =>
           assert.equal err, null
           @docId = docs[0]._id
-
-          @OriginalParentModel.findById @docId, (err, doc) ->
-            assert.equal err, null, 'When error in subdoc pre init hook, swallowed by mongoose'
-            assert.isArray doc.children
-            assert.lengthOf doc.children, 0, 'Children have errors in pre-init and so are no hydrated'
-            done()
+          done()
 
       after (done) ->
         @OriginalParentModel.remove {}, (err) ->
           assert.equal err, null
           done()
+
+      # This test is intentionally skipped to prevent misleading console messages
+      it.skip 'migration definitely needed', (done) ->
+        # This test is ok to skip because it doesn't test functionality, it just confirms that the migration is needed
+        # And it (correctly) causes errors to be logged to the console, which could be misleading
+        @OriginalParentModel.findById @docId, (err, doc) ->
+          assert.equal err, null, 'When error in subdoc pre init hook, swallowed by mongoose'
+          assert.isArray doc.children
+          assert.lengthOf doc.children, 0, 'Children have errors in pre-init and so are no hydrated'
 
       it 'should transform existing documents in collection such that they work with plugin version A', (done) ->
         @MigrationParentModel.migrateSubDocsToA 'children', (err) =>
