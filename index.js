@@ -105,7 +105,7 @@
     // Encryption Options //
 
     if (options.fields) {
-      options.encryptedFields = options.fields; // TODO update docs
+      options.encryptedFields = options.fields;
       console.warn('options.fields has been deprecated. please use options.encryptedFields');
     }
     if (options.exclude) {

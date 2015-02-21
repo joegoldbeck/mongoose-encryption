@@ -210,7 +210,6 @@ describe 'document.save() when only certain fields are encrypted', ->
       assert.propertyVal doc, 'unencryptedText', 'Unencrypted Text', 'selected unencrypted fields should be found'
       doc.save (err) =>
         assert.equal err, null
-        # TODO really we should combine ciphertext and authenticated text so you can't only select one
         @PartiallyEncryptedModel.findById(@partiallyEncryptedDoc).select('unencryptedText _ct _ac').exec (err, finalDoc) ->
           assert.equal err, null
           assert.equal finalDoc._ct, undefined
