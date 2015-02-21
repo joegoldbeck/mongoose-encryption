@@ -102,7 +102,8 @@
       }
     }
 
-    // Encryption Options //
+
+    // Deprecated options
 
     if (options.fields) {
       options.encryptedFields = options.fields; // TODO update docs
@@ -112,6 +113,22 @@
       options.excludeFromEncryption = options.exclude;
       console.warn('options.fields has been deprecated. please use options.excludeFromEncryption');
     }
+
+
+    // Check no disallowed characters used in options
+
+    var fieldsUsedInOptions = _.compact(_.union(
+        options.encryptedFields,
+        options.excludeFromEncryption,
+        options.additionalAuthenticatedFields
+      ));
+
+    if (_.any(fieldsUsedInOptions, function(field){ return field.indexOf('.') !== -1 })) {
+      throw new Error("Field names containing '.' are not currently supported")
+    }
+
+
+    // Encryption Options //
 
     if (options.encryptedFields) {
       encryptedFields = _.difference(options.encryptedFields, ['_ct']);

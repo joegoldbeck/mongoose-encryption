@@ -204,7 +204,6 @@ describe 'document.save() on nested document', ->
       assert.equal err, null
       assert.lengthOf docs, 1
       assert.isObject docs[0].nest
-      console.log docs[0]
       assert.propertyVal docs[0].nest, 'birdColor', 'blue'
       assert.propertyVal docs[0].nest, 'areBirdsPretty', true
       done()
@@ -1477,6 +1476,20 @@ describe '"requireAuthenticationCode" option', ->
               assert.propertyVal unmigratedDoc1, 'text', 'Plain'
               assert.propertyVal unmigratedDoc1, 'bool', true
               done()
+
+
+describe 'period in field name in options', ->
+  it 'is not be allowed', ->
+    schema = mongoose.Schema
+      nest:
+        secretBird: type: String
+
+    assert.throws ->
+      schema.plugin encrypt,
+        encryptionKey: encryptionKey
+        signingKey: signingKey
+        encryptedFields: ['nest.secretBird']
+
 
 describe 'migrations', ->
   describe 'migrateToA static model method', ->
