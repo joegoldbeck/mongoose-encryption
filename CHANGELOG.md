@@ -1,4 +1,9 @@
 # Release Notes
+## v 1.0.0
+2015-03-03
+- API declared stable
+- No code changes
+
 ## v 0.13.0
 2015-02-21
 - Add `decryptPostSave` option
