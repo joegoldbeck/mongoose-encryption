@@ -321,7 +321,7 @@ None of the authors are security experts. We relied on accepted tools and practi
 
 ## Acknowledgements
 
-Huge thanks goes out to [@stash](//github.com/stash) for pointing out the limitations of earlier versions of this plugin which lacked authentication and providing invaluable guidance and review on version 0.12.0.
+Huge thanks goes out to [Cinch Financial](https://www.cinchfinancial.com) for supporting this plugin through version 1.0, as well as [@stash](//github.com/stash) for pointing out the limitations of earlier versions which lacked authentication and providing invaluable guidance and review on version 0.12.0.
 
 ## License
 
