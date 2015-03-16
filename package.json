@@ -1,7 +1,7 @@
 {
   "name": "mongoose-encryption",
   "description": "Simple encryption and authentication plugin for Mongoose",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Joe Goldbeck"
   },
@@ -19,12 +19,12 @@
   "main": "./index.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/cinch-financial/mongoose-encryption.git"
+    "url": "git://github.com/joegoldbeck/mongoose-encryption.git"
   },
   "bugs": {
-    "url": "https://github.com/cinch-financial/mongoose-encryption/issues"
+    "url": "https://github.com/joegoldbeck/mongoose-encryption/issues"
   },
-  "homepage": "https://github.com/cinch-financial/mongoose-encryption",
+  "homepage": "https://github.com/joegoldbeck/mongoose-encryption",
   "license": "MIT",
   "dependencies": {
     "dotty": "0.0.2",

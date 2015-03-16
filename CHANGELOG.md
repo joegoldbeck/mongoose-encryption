@@ -1,4 +1,11 @@
 # Release Notes
+## v 1.0.1
+2015-03-16
+- Change repo location
+- Update readme
+- No code changes
+
+
 ## v 1.0.0
 2015-03-03
 - API declared stable
