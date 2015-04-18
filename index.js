@@ -276,8 +276,12 @@
       });
 
       schema.pre('save', function(next) {
+        var that = this;
+        _.forEach(authenticatedFields, function(authenticatedField){
+          that.markModified(authenticatedField)
+        });
+
         if (this.isNew || this.isSelected('_ct') ){
-          var that = this;
           that.encrypt(function(err){
             if (err) {
               next(err);
