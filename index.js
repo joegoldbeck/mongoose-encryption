@@ -277,16 +277,16 @@
 
       schema.pre('save', function(next) {
         var that = this;
-        _.forEach(authenticatedFields, function(authenticatedField){
-          that.markModified(authenticatedField)
-        });
-
         if (this.isNew || this.isSelected('_ct') ){
           that.encrypt(function(err){
             if (err) {
               next(err);
             } else {
               if ((that.isNew || allAuthenticationFieldsSelected(that)) && !isEmbeddedDocument(that)) {
+                _.forEach(authenticatedFields, function(authenticatedField){
+                  that.markModified(authenticatedField)
+                });
+
                 that.sign(next);
               } else {
                 next();
@@ -294,6 +294,10 @@
             }
           });
         } else if (allAuthenticationFieldsSelected(this) && !isEmbeddedDocument(this)) { // _ct is not selected but all authenticated fields are. cannot get hit in current version.
+          _.forEach(authenticatedFields, function(authenticatedField){
+            that.markModified(authenticatedField)
+          });
+
           this.sign(next);
         } else {
           next();
