@@ -1534,6 +1534,52 @@ describe 'period in field name in options', ->
         signingKey: signingKey
         encryptedFields: ['nest.secretBird']
 
+describe 'saving same authenticated document twice asynchronously', ->
+
+  TwoFieldAuthModel = null
+
+  TwoFieldAuthSchema = mongoose.Schema
+    text: type: String
+    num: type: Number
+
+  TwoFieldAuthSchema.plugin encrypt,
+    secret: secret
+    encryptedFields: []
+    additionalAuthenticatedFields: ['text', 'num']
+
+  TwoFieldAuthModel = mongoose.model 'TwoField', TwoFieldAuthSchema
+
+  before (done) ->
+    @testDoc = new TwoFieldAuthModel
+      text: 'Unencrypted text'
+      num: 42
+    @testDoc.save(done)
+
+  it 'should not cause errors, and the second save to authenticated fields should override the first in order (a transaction is forced)', (done) ->
+    TwoFieldAuthModel.findOne {_id: @testDoc._id}, (err, doc) =>
+      assert.equal err, null
+      doc.text = "Altered text";
+
+      TwoFieldAuthModel.findOne {_id: @testDoc._id}, (err, docAgain) =>
+        assert.equal err, null
+
+        docAgain.num = 55
+
+        doc.save (err) =>
+          assert.equal err, null
+
+          docAgain.save (err) =>
+            assert.equal err, null
+
+            TwoFieldAuthModel.find {_id: @testDoc._id}, (err, finalDocs) =>
+              assert.equal err, null
+              assert.lengthOf finalDocs, 1
+              assert.propertyVal finalDocs[0], 'text', 'Unencrypted text'
+              assert.propertyVal finalDocs[0], 'num', 55
+              done()
+
+
+
 
 describe 'migrations', ->
   describe 'migrateToA static model method', ->
