@@ -298,6 +298,7 @@ Advantages:
 Disadvantages:
 - Cannot select individual encrypted fields in a query nor unset or rename encrypted fields via an update operation
 - Potentially slower in cases where you only want to decrypt a subset of the document
+- Transactions including the entire encrypted/authenticated block are effectively enforced. Updating any encrypted or authenticated field forces them all to be marked as modified.
 
 
 ## Security Notes
