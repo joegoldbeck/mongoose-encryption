@@ -1,4 +1,8 @@
 # Release Notes
+## v 1.1.0
+2015-05-13
+- Force "transactions" across authenticated fields
+
 ## v 1.0.1
 2015-03-16
 - Change repo location
