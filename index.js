@@ -389,7 +389,15 @@
         }
         for (var field in decryptedObject) {
           decipheredVal = decryptedObject[field];
-          this[field] = decipheredVal;
+
+          //JSON.parse returns {type: "Buffer", data: Buffer} for Buffers
+          //https://nodejs.org/api/buffer.html#buffer_buf_tojson
+          if(_.isObject(decipheredVal) && decipheredVal.type === "Buffer"){
+            this[field] = decipheredVal.data;
+          }else {
+            this[field] = decipheredVal;
+          }
+
         }
         this._ct = undefined;
       }
