@@ -113,7 +113,7 @@ describe 'document.save()', ->
       mix: { str: 'A string', bool: false }
       buf: new Buffer 'abcdefg'
 
-    @simpleTestDoc2.save (err) ->
+    @simpleTestDoc2.save (err) =>
       assert.equal err, null
       done()
 
@@ -909,16 +909,19 @@ describe 'Array EmbeddedDocument', ->
           _id: @parentDoc._id
           'children._ct': $exists: true
           'children.text': $exists: false
-        , (err, docs) ->
-          assert.equal err, null
+        .exec()
+        .then (docs) ->
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
           done()
+        , done
+        .end()
 
     describe 'document.find()', ->
       it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
-        @ParentModel.findById @parentDoc._id, (err, doc) ->
-          assert.equal err, null
+        @ParentModel.findById @parentDoc._id
+        .exec()
+        .then (doc) ->
           assert.propertyVal doc, 'text', 'Unencrypted text'
           assert.isArray doc.children
           assert.isObject doc.children[0]
@@ -926,7 +929,8 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
-
+        , done
+        .end()
 
     describe 'when child field is in additionalAuthenticatedFields on parent and child documents are tampered with by swapping their ciphertext', ->
       it 'should pass an error', (done) ->
@@ -1010,25 +1014,51 @@ describe 'Array EmbeddedDocument', ->
         children: [ChildModelSchema]
 
       ParentModelSchema.pre 'validate', (next) ->
-          @invalidate 'text', 'invalid', this.text
-          next()
+        @invalidate 'text', 'invalid', this.text
+        next()
 
       @ParentModel2 = mongoose.model 'ParentWithoutPlugin', ParentModelSchema
       @ChildModel2 = mongoose.model 'ChildAgain', ChildModelSchema
 
-    it 'Should return encrypted embedded documents after failed parent save', (done) ->
-      doc = new @ParentModel2
-        text: 'here it is'
-        children: [{text: 'Child unencrypted text'}]
-      doc.save (err) ->
-        assert.ok err, 'There should be a validation error'
-        assert.propertyVal doc, 'text', 'here it is'
-        assert.isArray doc.children
-        assert.isObject doc.children[0]
-        assert.property doc.children[0], '_id'
-        assert.property doc.children[0], '_ct'
-        assert.notProperty doc.children[0], 'text'
-        done()
+      @mongooseVersion = parseInt(mongoose.version.split('.')[0])
+
+    describe 'in mongoose v3.x', ->
+
+      it 'should return encrypted embedded documents', (done) ->
+        return done() if @mongooseVersion > 3
+
+        doc = new @ParentModel2
+          text: 'here it is'
+          children: [{text: 'Child unencrypted text'}]
+
+        doc.save (err) ->
+          assert.ok err, 'There should be a validation error'
+          assert.propertyVal doc, 'text', 'here it is'
+          assert.isArray doc.children
+          assert.isObject doc.children[0]
+          assert.property doc.children[0], '_id'
+          assert.property doc.children[0], '_ct'
+          assert.notProperty doc.children[0], 'text'
+          done()
+
+    describe 'in mongoose v4.x', ->
+
+      it 'should return unencrypted embedded documents after failed parent save', (done) ->
+        return done() if @mongooseVersion < 4
+
+        doc = new @ParentModel2
+          text: 'here it is'
+          children: [{text: 'Child unencrypted text'}]
+
+        doc.save (err) ->
+          assert.ok err, 'There should be a validation error'
+          assert.propertyVal doc, 'text', 'here it is'
+          assert.isArray doc.children
+          assert.isObject doc.children[0]
+          assert.property doc.children[0], '_id'
+          assert.notProperty doc.children[0], '_ct'
+          assert.property doc.children[0], 'text', 'Child unencrypted text'
+          done()
 
   describe 'Encrypted embedded document when parent has validation error and has encryptedChildren plugin', ->
     before ->
@@ -1403,9 +1433,10 @@ describe 'Tampering with an encrypted document', ->
     BasicEncryptedModel.findOne(_id: @testDoc2._id).lean().exec (err, doc2) =>
       assert.equal err, null
       ctForSwap = doc2._ct.buffer
-      BasicEncryptedModel.update({_id: @testDoc._id}, {$set: _ct: doc2._ct}).exec (err, num) =>
+      BasicEncryptedModel.update({_id: @testDoc._id}, {$set: _ct: doc2._ct}).exec (err, raw) =>
+        n = raw.n || raw
         assert.equal err, null
-        assert.equal num, 1
+        assert.equal n, 1
         BasicEncryptedModel.findOne(_id: @testDoc._id).exec (err, doc) =>
           assert.ok err
           done()
@@ -1448,18 +1479,20 @@ describe 'additionalAuthenticatedFields option', ->
       done()
 
   it 'find should succeed if non-authenticated field is modified directly', (done) ->
-    AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: num: 48}).exec (err, num) =>
+    AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: num: 48}).exec (err, raw) =>
+      n = raw.n || raw
       assert.equal err, null
-      assert.equal num, 1
+      assert.equal n, 1
       AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
         assert.equal err, null
         assert.propertyVal doc, 'num', 48
         done()
 
   it 'find should fail if non-authenticated field is modified directly', (done) ->
-    AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: bool: false}).exec (err, num) =>
+    AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: bool: false}).exec (err, raw) =>
+      n = raw.n || raw
       assert.equal err, null
-      assert.equal num, 1
+      assert.equal n, 1
       AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
         assert.ok err, 'There was an error'
         assert.propertyVal err, 'message', 'Authentication failed'
@@ -1489,8 +1522,9 @@ describe '"requireAuthenticationCode" option', ->
         bool: false
         num: 33
 
-      LessSecureModel.collection.insert [plainDoc, plainDoc2], (err, docs) =>
+      LessSecureModel.collection.insert [plainDoc, plainDoc2], (err, raw) =>
         assert.equal err, null
+        docs = raw.ops || raw
         @docId = docs[0]._id
         @doc2Id = docs[1]._id
         done()
@@ -1625,8 +1659,9 @@ describe 'migrations', ->
           _ct: bufferEncryptedWithOldVersion2
           unencryptedText: 'Never was encrypted'
 
-        OriginalModel.collection.insert [docEncryptedWithOldVersion, docEncryptedWithOldVersion2], (err, docs) =>
+        OriginalModel.collection.insert [docEncryptedWithOldVersion, docEncryptedWithOldVersion2], (err, raw) =>
           assert.equal err, null
+          docs = raw.ops || raw
           @docId = docs[0]._id
           @doc2Id = docs[1]._id
           OriginalModel.findById @docId, (err, doc) ->
@@ -1693,8 +1728,9 @@ describe 'migrations', ->
           bool: false
           num: 33
 
-        PreviouslyUnencryptedModel.collection.insert [plainDoc, plainDoc2], (err, docs) =>
+        PreviouslyUnencryptedModel.collection.insert [plainDoc, plainDoc2], (err, raw) =>
           assert.equal err, null
+          docs = raw.ops || raw
           @docId = docs[0]._id
           @doc2Id = docs[1]._id
           done()
@@ -1785,8 +1821,9 @@ describe 'migrations', ->
             { _ct: bufferEncryptedWithOldVersion2, _id: new mongoose.Types.ObjectId() }
            ]
 
-        @OriginalParentModel.collection.insert [docWithChildrenFromOldVersion], (err, docs) =>
+        @OriginalParentModel.collection.insert [docWithChildrenFromOldVersion], (err, raw) =>
           assert.equal err, null
+          docs = raw.ops || raw
           @docId = docs[0]._id
           done()
 
@@ -1841,8 +1878,9 @@ describe 'migrations', ->
         bool: false
         num: 33
 
-      UnsignedModel.collection.insert [plainDoc, plainDoc2], (err, docs) =>
+      UnsignedModel.collection.insert [plainDoc, plainDoc2], (err, raw) =>
         assert.equal err, null
+        docs = raw.ops || raw
         @docId = docs[0]._id
         @doc2Id = docs[1]._id
         done()
