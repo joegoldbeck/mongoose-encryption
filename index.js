@@ -389,7 +389,15 @@
         }
         for (var field in decryptedObject) {
           decipheredVal = decryptedObject[field];
-          this[field] = decipheredVal;
+
+          //JSON.parse returns {type: "Buffer", data: Buffer} for Buffers
+          //https://nodejs.org/api/buffer.html#buffer_buf_tojson
+          if(_.isObject(decipheredVal) && decipheredVal.type === "Buffer"){
+            this[field] = decipheredVal.data;
+          }else {
+            this[field] = decipheredVal;
+          }
+
         }
         this._ct = undefined;
       }
@@ -451,6 +459,11 @@
   // which could otherwise cause data loss if validation error fixed and a resave was attempted
   // For use in conjunction with the main encryption plugin
   module.exports.encryptedChildren = function(schema, options) {
+    if (mongoose.version > '4.1.0') {
+      console.warn('encryptedChildren plugin is not needed for mongoose versions above 4.1.1, continuing without plugin.');
+      return;
+    }
+
     schema.post('validate', function(doc) {
       if (doc.errors) {
         decryptEmbeddedDocs(doc);
