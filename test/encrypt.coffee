@@ -141,15 +141,22 @@ describe 'document.save()', ->
 
   it 'returns decrypted data after save', (done) ->
     @simpleTestDoc2.save (err, doc) ->
-      assert.equal doc.text, 'Unencrypted text'
-      assert.equal doc.bool, true
-      assert.equal doc.num, 42
-      assert.deepEqual doc.date, new Date('2014-05-19T16:39:07.536Z')
-      assert.equal doc.id2, '5303e65d34e1e80d7a7ce212'
-      assert.equal doc.arr.toString(), ['alpha', 'bravo'].toString()
-      assert.deepEqual doc.mix, { str: 'A string', bool: false }
-      assert.deepEqual doc.buf, new Buffer 'abcdefg'
-      done err
+      return done(err) if err
+
+      try
+        assert.equal doc._ct, undefined
+        assert.equal doc._ac, undefined
+        assert.equal doc.text, 'Unencrypted text'
+        assert.equal doc.bool, true
+        assert.equal doc.num, 42
+        assert.deepEqual doc.date, new Date('2014-05-19T16:39:07.536Z')
+        assert.equal doc.id2, '5303e65d34e1e80d7a7ce212'
+        assert.equal doc.arr.toString(), ['alpha', 'bravo'].toString()
+        assert.deepEqual doc.mix, { str: 'A string', bool: false }
+        assert.deepEqual doc.buf, new Buffer 'abcdefg'
+        done()
+      catch err
+        done err
 
    it 'should have called encryptSync then authenticateSync then decryptSynd', ->
     assert.equal @simpleTestDoc2.sign.callCount, 1

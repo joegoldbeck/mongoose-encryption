@@ -400,6 +400,7 @@
 
         }
         this._ct = undefined;
+        this._ac = undefined;
       }
     };
 
@@ -443,10 +444,7 @@
       var expectedHMAC = computeAC(this, authenticatedFieldsUsed, versionUsed, arguments[0]); // pass in modelName as argument in init hook
 
       var authentic = bufferEqual(basicAC, expectedHMAC);
-      if (authentic){
-        this._ac = undefined;
-        return null;
-      } else {
+      if (!authentic){
         throw new Error('Authentication failed');
       }
     };
