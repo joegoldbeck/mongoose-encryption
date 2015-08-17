@@ -1597,16 +1597,26 @@ describe '"requireAuthenticationCode" option', ->
 
 
 describe 'period in field name in options', ->
-  it 'is not be allowed', ->
-    schema = mongoose.Schema
+  it 'should encrypt nested fields with dot notation', (done) ->
+    NestedModelSchema = mongoose.Schema
       nest:
         secretBird: type: String
 
-    assert.throws ->
-      schema.plugin encrypt,
-        encryptionKey: encryptionKey
-        signingKey: signingKey
-        encryptedFields: ['nest.secretBird']
+    NestedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['nest.secretBird']
+
+    NestedModel = mongoose.model 'Nested', NestedModelSchema
+
+    nestedDoc = new NestedModel
+      nest: secretBird: 'Unencrypted text'
+
+    nestedDoc.encrypt (err) ->
+      assert.equal err, null
+      assert.equal nestedDoc.nest.secretBird, undefined
+
+      nestedDoc.decrypt (err) ->
+        assert.equal err, null
+        assert.equal nestedDoc.nest.secretBird, 'Unencrypted text'
+        done()
 
 describe 'saving same authenticated document twice asynchronously', ->
 
