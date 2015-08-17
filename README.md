@@ -130,11 +130,11 @@ userSchema.plugin(encrypt, {
   encryptedFields: []
 });
 
-// optional. only needed for correct document behavior following validation errors during a save
+// optional in Mongoose 3.x, not necessary in Mongoose 4.x. only needed for correct document behavior following validation errors during a save
 userSchema.plugin(encrypt.encryptedChildren);
 
 ```
-The need for `encrypt.encryptedChildren` arises because subdocument 'pre save' hooks are called before parent validation completes, and there are no subdocument hooks that fire when parent validation fails. Without the plugin, if you repair a parent doc after a failed save and then try to save again, data in the encrypted fields of the subdocuments will be lost.
+The need for `encrypt.encryptedChildren` in Mongoose 3.x arises because in those Mongoose versions, subdocument 'pre save' hooks are called before parent validation completes, and there are no subdocument hooks that fire when parent validation fails. Without the plugin, if you repair a parent doc after a failed save and then try to save again, data in the encrypted fields of the subdocuments will be lost. In Mongoose 4.x, this behavior is fixed.
 
 
 ### Save Behavior
