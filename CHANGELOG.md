@@ -1,4 +1,10 @@
 # Release Notes
+## v.1.2.0
+2015-08-16
+- Update tests to be Mongoose 4.x compatible
+- Fix decryption of buffers to be Node 0.12.x compatible
+- Cleaner documents after `.authenticate` and `.save`
+
 ## v 1.1.0
 2015-05-13
 - Force "transactions" across authenticated fields
