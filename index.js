@@ -269,6 +269,7 @@
               throw err; // note: this won't actually get thrown until save, because errors in subdoc init fns are CastErrors and aren't thrown by validate()
             }
             this._doc = data;
+            next();
             return this;
           } else {
             return next(err);
