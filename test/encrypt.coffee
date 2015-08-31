@@ -866,6 +866,85 @@ describe 'Array EmbeddedDocument', ->
                 assert.property doc.children[1], 'text', 'Child unencrypted text', 'Ciphertext was swapped'
                 done()
 
+    describe 'when child is encrypted and authenticated', ->
+      before ->
+        ChildModelSchema = mongoose.Schema
+          text: type: String
+
+        ChildModelSchema.plugin encrypt,
+          encryptionKey: encryptionKey
+          signingKey: signingKey
+
+        ParentModelSchema = mongoose.Schema
+          text: type: String
+          children: [ChildModelSchema]
+
+        ParentModelSchema.plugin encrypt,
+          encryptionKey: encryptionKey
+          signingKey: signingKey
+          encryptedFields: []
+          additionalAuthenticatedFields: ['children']
+
+        @ParentModel = mongoose.model 'ParentWithAuth', ParentModelSchema
+        @ChildModel = mongoose.model 'ChildWithAuth', ChildModelSchema
+
+      beforeEach (done) ->
+        @parentDoc = new @ParentModel
+          text: 'Unencrypted text'
+
+        childDoc = new @ChildModel
+          text: 'Child unencrypted text'
+
+        childDoc2 = new @ChildModel
+          text: 'Second unencrypted text'
+
+        @parentDoc.children.addToSet childDoc
+        @parentDoc.children.addToSet childDoc2
+
+        @parentDoc.save done
+
+      after (done) ->
+        @parentDoc.remove done
+
+      it 'should persist children as encrypted after removing a child', (done) ->
+        @ParentModel.findById @parentDoc._id, (err, doc) =>
+          return done(err) if err
+          assert.ok doc, 'should have found doc with encrypted children'
+
+          doc.children.id(doc.children[1]._id).remove()
+
+          doc.save (err) =>
+            return done(err) if err
+
+            @ParentModel.find
+              _id: @parentDoc._id
+              'children._ct': $exists: true
+              'children.text': $exists: false
+            , (err, docs) ->
+              return done(err) if err
+              assert.ok doc, 'should have found doc with encrypted children'
+              assert.equal doc.children.length, 1
+
+              done()
+
+      it 'should persist children as encrypted after adding a child', (done) ->
+        @ParentModel.findById @parentDoc._id, (err, doc) =>
+          return done(err) if err
+          assert.ok doc, 'should have found doc with encrypted children'
+
+          doc.children.addToSet text: 'new child'
+
+          doc.save (err) =>
+            return done(err) if err
+
+            @ParentModel.findById @parentDoc._id
+            .exec (err, doc) =>
+              return done(err) if err
+              assert.ok doc, 'should have found doc with encrypted children'
+              assert.equal doc.children.length, 3
+
+              done()
+
   describe 'when child and parent are encrypted', ->
     before ->
       ChildModelSchema = mongoose.Schema
