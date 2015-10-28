@@ -44,6 +44,7 @@
   var drop256 = function (buf) {
     var buf256 = new Buffer(32);
     buf.copy(buf256, 0, 0, 32);
+
     clearBuffer(buf);
     return buf256;
   };
@@ -373,9 +374,10 @@
     schema.methods.decryptSync = function() {
       var ct, ctWithIV, decipher, iv, idString, decryptedObject, decryptedObjectJSON, decipheredVal;
       if (this._ct) {
-        ctWithIV = this._ct.buffer || this._ct;
+        ctWithIV = this._ct.hasOwnProperty('buffer') ? this._ct.buffer : this._ct;
         iv = ctWithIV.slice(VERSION_LENGTH, VERSION_LENGTH + IV_LENGTH);
         ct = ctWithIV.slice(VERSION_LENGTH + IV_LENGTH, ctWithIV.length);
+
         decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, encryptionKey, iv);
         try {
           decryptedObjectJSON = decipher.update(ct, undefined, 'utf8') + decipher.final('utf8');
@@ -434,7 +436,7 @@
           return null;
         }
       }
-      var acBuf = this._ac.buffer || this._ac;
+      var acBuf = this._ac.hasOwnProperty('buffer') ? this._ac.buffer : this._ac;
       if (acBuf.length < VERSION_LENGTH + AAC_LENGTH + 2) {
         throw new Error('_ac is too short and has likely been cut off or modified');
       }
