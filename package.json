@@ -28,7 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "dotty": "0.0.2",
-    "mongoose": "~4.1.x",
+    "mongoose": ">=4.2.4",
     "underscore": "1.5.x",
     "buffer-equal-constant-time": "1.0.1",
     "json-stable-stringify": "1.0.0",
