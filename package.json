@@ -28,11 +28,13 @@
   "license": "MIT",
   "dependencies": {
     "dotty": "0.0.2",
-    "mongoose": "~4.1.x",
     "underscore": "1.5.x",
     "buffer-equal-constant-time": "1.0.1",
     "json-stable-stringify": "1.0.0",
     "async": "0.9.0"
+  },
+  "peerDependencies":{
+    "mongoose": ">=3.8.28"
   },
   "devDependencies": {
     "mocha": "1.x.x",
