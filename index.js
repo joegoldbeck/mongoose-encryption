@@ -4,6 +4,7 @@
   var crypto = require('crypto');
   var _ = require('underscore');
   var mongoose = require('mongoose');
+  var semver = require('semver')
   var ObjectId = mongoose.Types.ObjectId;
   var stableStringify = require('json-stable-stringify');
   var async = require('async');
@@ -67,6 +68,11 @@
     });
   };
 
+  if(semver.gt(process.version, '4.0.0')){
+    if(semver.lt(mongoose.version, '4.2.4')){
+      throw new Error('Mongoose version 4.2.4 or greater is required for Node version 4.0.0 or greater');
+    }
+  }
 
   // Exported Plugin //
 
