@@ -1,7 +1,7 @@
 {
   "name": "mongoose-encryption",
   "description": "Simple encryption and authentication plugin for Mongoose",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": {
     "name": "Joe Goldbeck"
   },

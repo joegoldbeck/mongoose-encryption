@@ -1,5 +1,10 @@
 # Release Notes
 
+## v.1.2.3
+2015-11-29
+- Change Mongoose to peer dependency
+- Check for compatibility with Node and Mongoose versions
+
 ## v.1.2.2
 2015-11-4
 - Fix buffer handling for Node 4.x compatibility
