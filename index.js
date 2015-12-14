@@ -10,6 +10,7 @@
   var async = require('async');
   var dotty = require('dotty');
   var bufferEqual = require('buffer-equal-constant-time');
+  var mpath = require('mpath');
 
 
   // Constants //
@@ -75,6 +76,44 @@
     }
   }
 
+  // using mpath.set() for this would be nice
+  // but it does not create new objects as it traverses the path
+  var setFieldValue = function(field, val, obj) {
+    var parts = field.split('.');
+    var partsLen = parts.length;
+    var partRef = obj || {};
+    var i, part;
+
+    for (i = 0; i < partsLen; i++) {
+      part = parts[i];
+
+      if (i === partsLen - 1) {
+        partRef[part] = val;
+      } else {
+        partRef[part] = partRef[part] || {};
+        partRef = partRef[part];
+      }
+    }
+
+    return obj;
+  };
+
+  var pickFieldsFromObject = function(obj, fields, excludeUndefinedValues) {
+    var result = {};
+    var val;
+
+    fields.forEach(function(field) {
+      val = mpath.get(field, obj);
+
+      if (!excludeUndefinedValues || val !== undefined) {
+        setFieldValue(field, val, result);
+      }
+    });
+
+    return result;
+  };
+
+
   // Exported Plugin //
 
   var mongoosePlugin = module.exports = function(schema, options) {
@@ -123,19 +162,6 @@
     }
 
 
-    // Check no disallowed characters used in options
-
-    var fieldsUsedInOptions = _.compact(_.union(
-        options.encryptedFields,
-        options.excludeFromEncryption,
-        options.additionalAuthenticatedFields
-      ));
-
-    if (_.any(fieldsUsedInOptions, function(field){ return field.indexOf('.') !== -1 })) {
-      throw new Error("Field names containing '.' are not currently supported")
-    }
-
-
     // Encryption Options //
 
     if (options.encryptedFields) {
@@ -144,14 +170,12 @@
       excludedFields = _.union(['_id', '_ct'], options.excludeFromEncryption);
       encryptedFields = _.chain(schema.paths)
         .filter(function(pathDetails) { // exclude indexed fields
-          return !pathDetails._index })
+          return !pathDetails._index
+        })
         .pluck('path') // get path name
         .difference(excludedFields) // exclude excluded fields
-        .map(function(path) { // get the top level field
-          return path.split('.')[0]
-        })
         .uniq()
-        .value()
+        .value();
     }
 
 
@@ -211,7 +235,7 @@
 
       // convert to regular object if possible in order to convert to the eventual mongo form which may be different than mongoose form
       // and only pick fields that will be authenticated
-      var objectToAuthenticate = _.pick((doc.toObject ? doc.toObject() : doc), fields);
+      var objectToAuthenticate = pickFieldsFromObject((doc.toObject ? doc.toObject() : doc), fields);
       var stringToAuthenticate = stableStringify(objectToAuthenticate);
       hmac.update(collectionId);
       hmac.update(version);
@@ -226,7 +250,9 @@
     var authenticationFieldsToCheck = _.chain(authenticatedFields).union(['_ac']).without('_id').value(); // _id is implicitly selected
 
     var authenticatedFieldsIsSelected = function(doc){
-      return _.map(authenticationFieldsToCheck, function(field) {return doc.isSelected(field);});
+      return _.map(authenticationFieldsToCheck, function(field) {
+        return doc.isSelected(field);
+      });
     };
 
     var allAuthenticationFieldsSelected = function(doc){
@@ -338,20 +364,13 @@
       var that = this;
       // generate random iv
       crypto.randomBytes(IV_LENGTH, function(err, iv) {
-        var cipher, field, jsonToEncrypt, objectToEncrypt, val;
+        var cipher, field, jsonToEncrypt, objectToEncrypt;
         if (err) {
           return cb(err);
         }
         cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, encryptionKey, iv);
-        objectToEncrypt = _.pick(that, encryptedFields);
+        objectToEncrypt = pickFieldsFromObject(that, encryptedFields, true);
 
-        // only encrypt fields that are defined
-        for (field in objectToEncrypt) {
-          val = objectToEncrypt[field];
-          if (val === undefined) {
-            delete objectToEncrypt[field];
-          }
-        }
         jsonToEncrypt = JSON.stringify(objectToEncrypt);
 
         cipher.end(jsonToEncrypt, 'utf-8', function() {
@@ -360,7 +379,7 @@
 
           // remove encrypted fields from cleartext
           encryptedFields.forEach(function(field){
-            that[field] = undefined;
+            setFieldValue(field, undefined, that);
           });
 
           cb(null);
@@ -378,6 +397,7 @@
     };
 
     schema.methods.decryptSync = function() {
+      var that = this;
       var ct, ctWithIV, decipher, iv, idString, decryptedObject, decryptedObjectJSON, decipheredVal;
       if (this._ct) {
         ctWithIV = this._ct.hasOwnProperty('buffer') ? this._ct.buffer : this._ct;
@@ -396,18 +416,19 @@
           }
           throw new Error('Error parsing JSON during decrypt of ' + idString + ': ' + err);
         }
-        for (var field in decryptedObject) {
-          decipheredVal = decryptedObject[field];
+
+        encryptedFields.forEach(function(field) {
+          decipheredVal = mpath.get(field, decryptedObject);
 
           //JSON.parse returns {type: "Buffer", data: Buffer} for Buffers
           //https://nodejs.org/api/buffer.html#buffer_buf_tojson
           if(_.isObject(decipheredVal) && decipheredVal.type === "Buffer"){
-            this[field] = decipheredVal.data;
+            setFieldValue(field, decipheredVal.data, that);
           }else {
-            this[field] = decipheredVal;
+            setFieldValue(field, decipheredVal, that);
           }
+        });
 
-        }
         this._ct = undefined;
         this._ac = undefined;
       }

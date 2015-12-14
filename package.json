@@ -28,14 +28,17 @@
   "license": "MIT",
   "dependencies": {
     "dotty": "0.0.2",
-    "underscore": "1.5.x",
+    "async": "0.9.0",
     "buffer-equal-constant-time": "1.0.1",
+    "dotty": "0.0.2",
     "json-stable-stringify": "1.0.0",
     "async": "0.9.0",
     "semver": "5.1.x"
   },
   "peerDependencies":{
-    "mongoose": ">=3.8.28"
+    "mongoose": ">=3.8.28",
+    "mpath": "~0.2.1",
+    "underscore": "1.5.x"
   },
   "devDependencies": {
     "mocha": "1.x.x",
@@ -47,6 +50,6 @@
     "node": ">= 0.10.25"
   },
   "scripts": {
-      "test": "mocha ./test --compilers coffee:coffee-script/register --timeout 3000"
+    "test": "mocha ./test --compilers coffee:coffee-script/register --timeout 3000"
   }
 }
