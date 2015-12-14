@@ -1,5 +1,9 @@
 # Release Notes
 
+## v.1.3.0
+2015-12-13
+- Add support for addressing nested fields in options using dot notation
+
 ## v.1.2.3
 2015-11-29
 - Change Mongoose to peer dependency
