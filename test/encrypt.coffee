@@ -1687,21 +1687,48 @@ describe 'period in field name in options', ->
     NestedModelSchema = mongoose.Schema
       nest:
         secretBird: type: String
+        secretBird2: type: String
 
-    NestedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['nest.secretBird']
+    NestedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['nest.secretBird', 'nest.secretBird2']
 
     NestedModel = mongoose.model 'Nested', NestedModelSchema
 
     nestedDoc = new NestedModel
-      nest: secretBird: 'Unencrypted text'
+      nest:
+        secretBird: 'Unencrypted text'
+        secretBird2: 'Unencrypted text 2'
 
     nestedDoc.encrypt (err) ->
       assert.equal err, null
       assert.equal nestedDoc.nest.secretBird, undefined
+      assert.equal nestedDoc.nest.secretBird2, undefined
 
       nestedDoc.decrypt (err) ->
         assert.equal err, null
         assert.equal nestedDoc.nest.secretBird, 'Unencrypted text'
+        assert.equal nestedDoc.nest.secretBird2, 'Unencrypted text 2'
+        done()
+
+  it 'should encrypt nested fields with dot notation two layers deep', (done) ->
+    NestedModelSchema = mongoose.Schema
+      nest:
+        secretBird:
+          topSecretEgg: type: String
+
+    NestedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['nest.secretBird.topSecretEgg']
+
+    NestedModel = mongoose.model 'NestedNest', NestedModelSchema
+
+    nestedDoc = new NestedModel
+      nest: secretBird: topSecretEgg: 'Unencrypted text'
+
+    nestedDoc.encrypt (err) ->
+      assert.equal err, null
+      assert.equal nestedDoc.nest.secretBird.topSecretEgg, undefined
+
+      nestedDoc.decrypt (err) ->
+        assert.equal err, null
+        assert.equal nestedDoc.nest.secretBird.topSecretEgg, 'Unencrypted text'
         done()
 
 describe 'saving same authenticated document twice asynchronously', ->
