@@ -1688,8 +1688,9 @@ describe 'period in field name in options', ->
       nest:
         secretBird: type: String
         secretBird2: type: String
+        publicBird: type: String
 
-    NestedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['nest.secretBird', 'nest.secretBird2']
+    NestedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'EncryptedFields', encryptedFields: ['nest.secretBird', 'nest.secretBird2'], additionalAuthenticatedFields: ['nest.publicBird']
 
     NestedModel = mongoose.model 'Nested', NestedModelSchema
 
@@ -1697,16 +1698,19 @@ describe 'period in field name in options', ->
       nest:
         secretBird: 'Unencrypted text'
         secretBird2: 'Unencrypted text 2'
+        publicBird: 'Unencrypted text 3'
 
     nestedDoc.encrypt (err) ->
       assert.equal err, null
       assert.equal nestedDoc.nest.secretBird, undefined
       assert.equal nestedDoc.nest.secretBird2, undefined
+      assert.equal nestedDoc.nest.publicBird, 'Unencrypted text 3'
 
       nestedDoc.decrypt (err) ->
         assert.equal err, null
         assert.equal nestedDoc.nest.secretBird, 'Unencrypted text'
         assert.equal nestedDoc.nest.secretBird2, 'Unencrypted text 2'
+        assert.equal nestedDoc.nest.publicBird, 'Unencrypted text 3'
         done()
 
   it 'should encrypt nested fields with dot notation two layers deep', (done) ->
