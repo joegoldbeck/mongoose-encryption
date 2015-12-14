@@ -74,6 +74,7 @@ You can also specify exactly which fields to encrypt with the `encryptedFields` 
 userSchema.plugin(encrypt, { encryptionKey: encKey, signingKey: sigKey, encryptedFields: ['age'] });
 ```
 
+
 ### Authenticate Additional Fields
 By default, the encrypted parts of documents are authenticated along with the `_id` to prevent copy/paste attacks by an attacker with database write access. If you use one of the above options such that only part of your document is encrypted, you might want to authenticate the fields kept in cleartext to prevent tampering. In particular, consider authenticating any fields used for authorization, such as `email`, `isAdmin`, or `password` (though password should probably be in the encrypted block). You can do this with the `additionalAuthenticatedFields` option.
 ```
@@ -86,6 +87,11 @@ userSchema.plugin(encrypt, {
 });
 ```
 Note that the most secure choice is to include all non-encrypted fields for authentication, as this prevents tampering with any part of the document.
+
+
+### Nested Fields
+Nested fields can be addressed in options using dot notation. For example, `encryptedFields: ['nest.secretBird']`
+
 
 ### Renaming an Encrypted Collection
 
