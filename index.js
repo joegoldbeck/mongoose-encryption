@@ -78,7 +78,7 @@
 
   // using mpath.set() for this would be nice
   // but it does not create new objects as it traverses the path
-  var setFieldValue = function(field, val, obj) {
+  var setFieldValue = function(obj, field, val) {
     var parts = field.split('.');
     var partsLen = parts.length;
     var partRef = obj || {};
@@ -98,15 +98,19 @@
     return obj;
   };
 
-  var pickFieldsFromObject = function(obj, fields, excludeUndefinedValues) {
+  var pickFieldsFromObject = function(obj, fields, options) {
     var result = {};
     var val;
+    var options = options || {};
+    _.defaults(options, {
+      excludeUndefinedValues: false
+    });
 
     fields.forEach(function(field) {
       val = mpath.get(field, obj);
 
-      if (!excludeUndefinedValues || val !== undefined) {
-        setFieldValue(field, val, result);
+      if (!options.excludeUndefinedValues || val !== undefined) {
+        setFieldValue(result, field, val);
       }
     });
 
@@ -369,7 +373,7 @@
           return cb(err);
         }
         cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, encryptionKey, iv);
-        objectToEncrypt = pickFieldsFromObject(that, encryptedFields, true);
+        objectToEncrypt = pickFieldsFromObject(that, encryptedFields, {excludeUndefinedValues: true});
 
         jsonToEncrypt = JSON.stringify(objectToEncrypt);
 
@@ -379,7 +383,7 @@
 
           // remove encrypted fields from cleartext
           encryptedFields.forEach(function(field){
-            setFieldValue(field, undefined, that);
+            setFieldValue(that, field, undefined);
           });
 
           cb(null);
@@ -423,9 +427,9 @@
           //JSON.parse returns {type: "Buffer", data: Buffer} for Buffers
           //https://nodejs.org/api/buffer.html#buffer_buf_tojson
           if(_.isObject(decipheredVal) && decipheredVal.type === "Buffer"){
-            setFieldValue(field, decipheredVal.data, that);
+            setFieldValue(that, field, decipheredVal.data);
           }else {
-            setFieldValue(field, decipheredVal, that);
+            setFieldValue(that, field, decipheredVal);
           }
         });
 
