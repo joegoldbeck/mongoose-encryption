@@ -125,7 +125,7 @@
     schema.methods.decryptSync = function() {
       var ct, ctWithIV, decipher, iv;
       if (this._ct) {
-        ctWithIV = this._ct.buffer || this._ct;
+        ctWithIV = this._ct.hasOwnProperty('buffer') ? this._ct.buffer : this._ct;
         iv = ctWithIV.slice(0, IV_LENGTH);
         ct = ctWithIV.slice(IV_LENGTH, ctWithIV.length);
         decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
