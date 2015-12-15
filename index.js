@@ -2,6 +2,8 @@
 
   var crypto = require('crypto');
   var _ = require('underscore');
+  var mongoose = require('mongoose');
+  var semver = require('semver')
   var dotty = require('dotty');
 
   var ALGORITHM = 'aes-256-cbc';
@@ -11,9 +13,17 @@
     return doc.constructor.name === 'EmbeddedDocument';
   };
 
+  if(semver.gt(process.version, '4.0.0')){
+    if(semver.lt(mongoose.version, '4.2.4')){
+      throw new Error('Mongoose version 4.2.4 or greater is required for Node version 4.0.0 or greater');
+    }
+  }
+
   module.exports = function(schema, options) {
 
     var details, encryptedFields, excludedFields, key, path;
+
+
 
     if (!options.key)
       throw new Error('options.key is required as a 32 byte base64 string');

@@ -24,13 +24,16 @@
   "license": "MIT",
   "dependencies": {
     "dotty": "0.0.2",
-    "underscore": "1.5.x"
+    "underscore": "1.5.x",
+    "semver": "5.1.x"
+  },
+  "peerDependencies":{
+    "mongoose": ">=3.8.28"
   },
   "devDependencies": {
     "mocha": "1.x.x",
     "chai": "1.x.x",
     "coffee-script": "1.7.x",
-    "mongoose": "3.8.x",
     "sinon": "~1.10.3"
   },
   "engines": {
