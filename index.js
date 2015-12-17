@@ -69,7 +69,7 @@
     }
   };
 
-  var decryptSubDocs = function(doc) {
+  var decryptEmbeddedDocs = function(doc) {
     _.keys(doc.schema.paths).forEach(function(path) {
       if (path === '_id' || path === '__v') {
         return;
@@ -77,12 +77,12 @@
 
       var nestedDoc = dotty.get(doc, path);
 
-      if (nestedDoc) {
-        if (isSingleNestedDocument(nestedDoc)) {
-          maybeDecryptSync(nestedDoc);
-        } else if (nestedDoc[0] && isEmbeddedDocument(nestedDoc[0])) {
-          nestedDoc.forEach(maybeDecryptSync);
-        }
+      if (nestedDoc && nestedDoc[0] && isEmbeddedDocument(nestedDoc[0])) {
+        nestedDoc.forEach(function(subDoc) {
+          if (_.isFunction(subDoc.decryptSync)){
+            subDoc.decryptSync();
+          }
+        });
       }
     });
   };
@@ -370,7 +370,7 @@
           // instead had to call decrypt on all subDocs.
           // ref https://github.com/LearnBoost/mongoose/issues/915
 
-          decryptSubDocs(doc);
+          decryptEmbeddedDocs(doc);
 
           return doc;
         });
@@ -515,7 +515,7 @@
 
     schema.post('validate', function(doc) {
       if (doc.errors) {
-        decryptSubDocs(doc);
+        decryptEmbeddedDocs(doc);
       }
     });
   };
