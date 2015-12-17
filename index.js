@@ -317,7 +317,7 @@
             err = e;
           }
 
-          if (isEmbeddedDocument(this)) {
+          if (isSingleNestedDocument(this) || isEmbeddedDocument(this)) {
             if (err) {
               console.error(err);
               throw err; // note: this won't actually get thrown until save, because errors in subdoc init fns are CastErrors and aren't thrown by validate()
