@@ -2071,3 +2071,59 @@ describe 'migrations', ->
           assert.propertyVal signedDoc, 'text', 'Plain'
           assert.propertyVal signedDoc, 'bool', true
           done()
+
+describe 'single nested schemas', ->
+  before ->
+    @singleNestedSchema = mongoose.Schema
+      birdColor: type: String
+      areBirdsPretty: type: Boolean
+
+    @singleNestedSchema.plugin encrypt, secret: secret
+
+    @schemaWithSingleNested = mongoose.Schema
+      singleNested: @singleNestedSchema
+
+    @ModelWithSingleNested = mongoose.model 'SingleNestedParent', @schemaWithSingleNested
+
+  beforeEach (done) ->
+
+    @singleNestedTestDoc = new @ModelWithSingleNested
+      singleNested:
+        birdColor: 'blue'
+        areBirdsPretty: true
+
+    @singleNestedTestDoc.save (err) ->
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @singleNestedTestDoc.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'encrypts single nested schema fields', (done) ->
+    @ModelWithSingleNested.find(
+      _id: @singleNestedTestDoc._id
+      singleNested: $exists: true
+      'singleNested._ct': $exists: true
+      'singleNested.birdColor': $exists: false
+      'singleNested.areBirdsPretty': $exists: false
+    ).lean().exec (err, docs) ->
+      assert.equal err, null
+      assert.lengthOf docs, 1
+      done()
+
+  it 'saves encrypted single nested schema fields', (done) ->
+    @ModelWithSingleNested.find
+      _id: @singleNestedTestDoc._id
+      singleNested: $exists: true
+      'singleNested._ct': $exists: true
+      'singleNested.birdColor': $exists: false
+      'singleNested.areBirdsPretty': $exists: false
+    , (err, docs) ->
+      assert.equal err, null
+      assert.lengthOf docs, 1
+      assert.isObject docs[0].singleNested
+      assert.equal docs[0].singleNested.birdColor, 'blue'
+      assert.equal docs[0].singleNested.areBirdsPretty, true
+      done()
