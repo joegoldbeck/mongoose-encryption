@@ -53,7 +53,7 @@ userSchema.plugin(encrypt, { encryptionKey: encKey, signingKey: sigKey });
 User = mongoose.model('User', userSchema);
 ```
 
-And you're all set. You should be able to `find` and make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be authenticated and decrypted. `findOne`, `findById`, etc..., as well as `save` and `create` also all work as normal. `update` will work fine on unencrypted and unauthenticated fields, but will not work correctly if encrypted or authenticated fields are involved.
+And you're all set. `find` works transparently (though you cannot query fields that are encrypted) and you can make `New` documents as normal, but you should not use the `lean` option on a `find` if you want the document to be authenticated and decrypted. `findOne`, `findById`, etc..., as well as `save` and `create` also all work as normal. `update` will work fine on unencrypted and unauthenticated fields, but will not work correctly if encrypted or authenticated fields are involved.
 
 
 ### Exclude Certain Fields from Encryption
