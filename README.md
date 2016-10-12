@@ -240,6 +240,7 @@ If you are using mongoose-encryption on an empty collection, you can immediately
 ### The Secure Way
 To prevent tampering of the documents, each document is required by default to have a signature upon `find`. The class method `migrateToA()` encrypts and signs all documents in the collection. This should go without saying, but **backup your database** before running the migration below.
 ```
+// This should be run in a separate migration script
 userSchema.plugin(encrypt.migrations, { .... });
 User = mongoose.model('User', userSchema);
 User.migrateToA(function(err){
