@@ -13,7 +13,8 @@
   var mpath = require('mpath');
 
 
-  // Constants //
+
+  /**  Plugin Constants */
 
   var ENCRYPTION_ALGORITHM = 'aes-256-cbc';
   var IV_LENGTH = 16;
@@ -25,24 +26,63 @@
   var VERSION_BUF = new Buffer(VERSION);
 
 
-  // Utility Functions //
 
+  /**
+   * Check For Compatible Mongoose Version
+   */
+
+  if(semver.gt(process.version, '4.0.0')){
+    if(semver.lt(mongoose.version, '4.2.4')){
+      throw new Error('Mongoose version 4.2.4 or greater is required for Node version 4.0.0 or greater');
+    }
+  }
+
+
+
+  /**
+   * Utility Functions
+   */
+
+  /**
+   * Determines if embedded document.
+   *
+   * @param      {Model}    doc     The Mongoose document
+   * @return     {boolean}  True if embedded document, False otherwise.
+   */
   var isEmbeddedDocument = function (doc) {
     return doc.constructor.name === 'EmbeddedDocument';
   };
 
-  var deriveKey = function (master, type) {
-    var hmac = crypto.createHmac('sha512', master);
+  /**
+   * Derives 512 bit key from a string secret
+   *
+   * @param      {string}  secret  The secret
+   * @param      {string}  type    The type of key to generate. Can be any string.
+   * @return     {Buffer}  512 bit key
+   */
+  var deriveKey = function (secret, type) {
+    var hmac = crypto.createHmac('sha512', secret);
     hmac.update(type);
     return new Buffer(hmac.digest());
   };
 
+  /**
+   * Zeros a buffer for security
+   *
+   * @param      {Buffer}  buf     The buffer
+   */
   var clearBuffer = function (buf) {
     for (var i = 0; i < buf.length; i++) {
       buf[i] = 0;
     }
   };
 
+  /**
+   * Drops 256 bits from a 512 bit buffer
+   *
+   * @param      {Buffer}  buf     A 512 bit buffer
+   * @return     {Buffer}  A 256 bit buffer
+   */
   var drop256 = function (buf) {
     var buf256 = new Buffer(32);
     buf.copy(buf256, 0, 0, 32);
@@ -51,7 +91,11 @@
     return buf256;
   };
 
-
+  /**
+   * Decrypt any embedded documents inside of a Mongoose document
+   *
+   * @param      {Model}  doc     The mongoose document
+   */
   var decryptEmbeddedDocs = function(doc) {
     _.keys(doc.schema.paths).forEach(function(path) {
       if (path === '_id' || path === '__v') {
@@ -70,15 +114,17 @@
     });
   };
 
-  if(semver.gt(process.version, '4.0.0')){
-    if(semver.lt(mongoose.version, '4.2.4')){
-      throw new Error('Mongoose version 4.2.4 or greater is required for Node version 4.0.0 or greater');
-    }
-  }
-
-  // using mpath.set() for this would be nice
-  // but it does not create new objects as it traverses the path
+  /**
+   * Sets the value of a field.
+   *
+   * @param      {Object}  obj     The object
+   * @param      {string}  field   The path to a field. Can include dots (.)
+   * @param      {*}       val     The value to set the field
+   * @return     {Object}  The modified object
+   */
   var setFieldValue = function(obj, field, val) {
+    // using mpath.set() for this would be nice
+    // but it does not create new objects as it traverses the path
     var parts = field.split('.');
     var partsLen = parts.length;
     var partRef = obj || {};
@@ -98,6 +144,15 @@
     return obj;
   };
 
+  /**
+   * Pick a subset of fields from an object
+   *
+   * @param      {Object}   obj      The object
+   * @param      {string[]} fields   The fields to pick. Can include dots (.)
+   * @param      {Object}   [options]  The options
+   * @param      {boolean}  [options.excludeUndefinedValues=false]  Whether undefined values should be included in returned object.
+   * @return     {Object}   An object containing only those fields that have been picked
+   */
   var pickFieldsFromObject = function(obj, fields, options) {
     var result = {};
     var val;
@@ -118,7 +173,25 @@
   };
 
 
-  // Exported Plugin //
+
+  /**
+   * Mongoose encryption plugin
+   * @module mongoose-encryption
+   *
+   *
+   * @param      {Object}     schema   The schema
+   * @param      {Object}     options  Plugin options
+   * @param      {string}     [options.secret]  A secret string which will be used to generate an encryption key and a signing key
+   * @param      {string}     [options.encryptionKey]  A secret string which will be used to generate an encryption key
+   * @param      {string}     [options.signingKey]  A secret string which will be used to generate a signing key
+   * @param      {string[]}   [options.encryptedFields]  A list of fields to encrypt. Default is to encrypt all fields.
+   * @param      {string[]}   [options.excludeFromEncryption]  A list of fields to not encrypt
+   * @param      {string[]}   [options.additionalAuthenticatedFields]  A list of fields to authenticate even if they aren't encrypted
+   * @param      {boolean}    [options.requireAuthenticationCode=true]  Whether documents without an authentication code are valid
+   * @param      {boolean}    [options.decryptPostSave=true]  Whether to automatically decrypt documents in the application after saving them (faster if false)
+   * @param      {string}     [options.collectionId]  If you update the Model name of the schema, this should be set to its original name
+   * @return     {undefined}
+   */
 
   var mongoosePlugin = module.exports = function(schema, options) {
     var details, encryptedFields, excludedFields, authenticatedFields, encryptionKey, signingKey, path;
@@ -130,7 +203,7 @@
       _suppressDuplicatePluginError: false // used for testing only
     });
 
-    // Encryption Keys //
+    /** Encryption Keys */
 
     if (options.secret) {
       if (options.encryptionKey || options.signingKey) {
@@ -155,7 +228,7 @@
     }
 
 
-    // Deprecated options
+    /** Deprecated options */
 
     if (options.fields) {
       options.encryptedFields = options.fields;
@@ -167,7 +240,7 @@
     }
 
 
-    // Encryption Options //
+    /** Encryption Options */
 
     if (options.encryptedFields) {
       encryptedFields = _.difference(options.encryptedFields, ['_ct']);
@@ -184,7 +257,7 @@
     }
 
 
-    // Authentication Options //
+    /** Authentication Options */
 
     var baselineAuthenticateFields = ['_id', '_ct'];
 
@@ -197,7 +270,7 @@
 
 
 
-    // Augment Schema //
+    /** Augment Schema */
 
     if (!schema.paths._ct) { // ciphertext
       schema.add({
@@ -216,7 +289,7 @@
 
 
 
-    // Authentication Helper Functions //
+    /** Authentication Helper Functions */
 
     var computeAC = function(doc, fields, version, modelName) {
       // HMAC-SHA512-drop-256
@@ -250,7 +323,7 @@
       return drop256(fullAuthenticationBuffer);
     };
 
-    // Functions To Check If Authenticated Fields Were Selected By Query //
+    /** Functions To Check If Authenticated Fields Were Selected By Query */
 
     var authenticationFieldsToCheck = _.chain(authenticatedFields).union(['_ac']).without('_id').value(); // _id is implicitly selected
 
@@ -278,7 +351,6 @@
       }
     };
 
-
     // Ensure plugin only added once per schema
     if(schema.statics._mongooseEncryptionInstalled){
       if(!options._suppressDuplicatePluginError){
@@ -294,8 +366,7 @@
       schema.statics._mongooseEncryptionInstalled = true;
     }
 
-
-    // Middleware //
+    /** Middleware */
 
     if (options.middleware) { // defaults to true
       schema.pre('init', function(next, data) {
@@ -379,7 +450,7 @@
 
 
 
-    // Encryption Instance Methods //
+    /** Encryption Instance Methods */
 
     schema.methods.encrypt = function(cb) {
       var that = this;
@@ -458,7 +529,7 @@
 
 
 
-    // Authentication Instance Methods //
+    /** Authentication Instance Methods */
 
     schema.methods.sign = function(cb) {
       var basicAC = computeAC(this, authenticatedFields, VERSION);
@@ -502,11 +573,13 @@
   };
 
 
-  // Exports For Schemas That Contain Encrypted Embedded Documents
-
-  // this ensures that if parent has a validation error, children don't come out encrypted,
-  // which could otherwise cause data loss if validation error fixed and a resave was attempted
-  // For use in conjunction with the main encryption plugin
+  /**
+  * Export For Schemas That Contain Encrypted Embedded Documents
+  *
+  * this ensures that if parent has a validation error, children don't come out encrypted,
+  * which could otherwise cause data loss if validation error fixed and a resave was attempted
+  * For use in conjunction with the main encryption plugin
+  */
   module.exports.encryptedChildren = function(schema, options) {
     if (mongoose.version > '4.1.0') {
       console.warn('encryptedChildren plugin is not needed for mongoose versions above 4.1.1, continuing without plugin.');
