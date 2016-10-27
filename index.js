@@ -31,6 +31,18 @@
     return doc.constructor.name === 'EmbeddedDocument';
   };
 
+  var isSingleNestedDocument = function(doc) { 
+    return doc.$isSingleNested;
+  };
+
+  var getParentModelName = function(doc) { 
+    return isSingleNestedDocument(doc) && doc.$parent.constructor.modelName || '';
+  };
+
+  var getDocumentModelName = function(doc) { 
+    return doc.constructor.modelName || getParentModelName(doc);
+  };
+
   var deriveKey = function (master, type) {
     var hmac = crypto.createHmac('sha512', master);
     hmac.update(type);
@@ -50,7 +62,6 @@
     clearBuffer(buf);
     return buf256;
   };
-
 
   var decryptEmbeddedDocs = function(doc) {
     _.keys(doc.schema.paths).forEach(function(path) {
@@ -231,7 +242,7 @@
         throw new Error('_ac cannot be in array of fields to authenticate');
       }
 
-      var collectionId = options.collectionId || modelName || doc.constructor.modelName;
+      var collectionId = options.collectionId || modelName || getDocumentModelName(doc);
 
       if (!collectionId) {
         throw new Error('For authentication, each collection must have a unique id. This is normally the model name when there is one, but can be overridden or added by options.collectionId');
@@ -286,7 +297,7 @@
           try { // this hook must be synchronous for embedded docs, so everything is synchronous for code simplicity
             if (!isEmbeddedDocument(this)){ // don't authenticate embedded docs because there's no way to handle the error appropriately
               if (allAuthenticationFieldsSelected(this)) {
-                this.authenticateSync.call(data, this.constructor.modelName);
+                this.authenticateSync.call(data, getDocumentModelName(this));
               } else {
                 if (!noAuthenticationFieldsSelected(this)){
                   throw new Error("Authentication failed: Only some authenticated fields were selected by the query. Either all or none of the authenticated fields (" + authenticationFieldsToCheck + ") should be selected for proper authentication.");
@@ -300,7 +311,7 @@
             err = e;
           }
 
-          if (isEmbeddedDocument(this)) {
+          if (isSingleNestedDocument(this) || isEmbeddedDocument(this)) {
             if (err) {
               console.error(err);
               throw err; // note: this won't actually get thrown until save, because errors in subdoc init fns are CastErrors and aren't thrown by validate()
