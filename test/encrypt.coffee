@@ -1573,6 +1573,82 @@ describe 'Tampering with an encrypted document', ->
           assert.ok err
           done()
 
+describe 'Populating unencrypted references', ->
+
+  BasicModelSchema = mongoose.Schema
+    text: type: String
+    bool: type: Boolean
+    num: type: Number
+
+  BasicModel = mongoose.model 'BasicUnencrypted', BasicModelSchema
+
+  ReferentialModelSchema = mongoose.Schema
+    content:
+      type: mongoose.Schema.Types.ObjectId
+      ref: 'BasicUnencrypted'
+    secretText: type: String
+
+  ReferentialModelSchema.plugin encrypt,
+    secret: secret
+    excludeFromEncryption: ['content']
+
+  ReferentialModel = mongoose.model 'Referential', ReferentialModelSchema
+
+
+  before (done) ->
+    @testDoc = new BasicModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+
+    @testDoc.save (err) =>
+      assert.equal err, null
+
+      @referentialDoc = new ReferentialModel
+        content: @testDoc._id
+        secretText: 'secret'
+
+      @referentialDoc.save (err) =>
+        assert.equal err, null
+        done()
+
+  after (done) ->
+    @testDoc.remove (err) =>
+      assert.equal err, null
+      @referentialDoc.remove (err) ->
+        assert.equal err, null
+        done()
+
+  it 'find should work when not populated', (done) ->
+    ReferentialModel.findOne(_id: @referentialDoc._id).exec (err, doc) =>
+      assert.equal err, null
+      assert.equal doc.content.toString(), @testDoc._id.toString()
+      done()
+
+  it 'find should work when unencrypted fields populated', (done) ->
+    ReferentialModel.findOne(_id: @referentialDoc._id).populate('content').exec (err, doc) =>
+      assert.equal err, null
+      assert.typeOf doc.content, 'Object'
+      assert.propertyVal doc.content, 'text', 'Unencrypted text'
+      assert.propertyVal doc.content, 'bool', true
+      assert.propertyVal doc.content, 'num', 42
+      done()
+
+  it 'find should work after saving a populated document', (done) ->
+    ReferentialModel.findOne(_id: @referentialDoc._id).populate('content').exec (err, doc) =>
+      assert.equal err, null
+      doc.secretText = 'a new secret'
+      doc.save (err, doc) =>
+        assert.equal err, null
+        ReferentialModel.findOne(_id: @referentialDoc._id).populate('content').exec (err, doc) =>
+          assert.equal err, null
+          assert.propertyVal doc, 'secretText', 'a new secret'
+          assert.typeOf doc.content, 'Object'
+          assert.propertyVal doc.content, 'text', 'Unencrypted text'
+          assert.propertyVal doc.content, 'bool', true
+          assert.propertyVal doc.content, 'num', 42
+          done()
+
 
 describe 'additionalAuthenticatedFields option', ->
   AuthenticatedFieldsModelSchema = mongoose.Schema
