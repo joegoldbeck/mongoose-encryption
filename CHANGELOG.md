@@ -1,5 +1,18 @@
 # Release Notes
 
+## v.1.4.0
+2016-12-5
+- Throw error when plugin added twice, or migrations added alongside standard plugin. #42
+- Move underscore to dependencies #46
+
+## v.1.3.2
+2016-10-24
+- Move mpath to dependencies #44
+
+# v.1.3.1
+2016-5-24
+- Allow wider range of underscore versions
+
 ## v.1.3.0
 2015-12-13
 - Add support for addressing nested fields in options using dot notation
