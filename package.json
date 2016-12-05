@@ -32,13 +32,14 @@
     "dotty": "0.0.2",
     "mpath": "0.2.1",
     "json-stable-stringify": "1.0.0",
-    "semver": "5.1.x"
-  },
-  "peerDependencies":{
-    "mongoose": ">=3.8.28",
+    "semver": "5.1.x",
     "underscore": ">=1.5.0 <2.0.0"
   },
+  "peerDependencies":{
+    "mongoose": ">=3.8.28"
+  },
   "devDependencies": {
+    "mongoose": ">=3.8.28",
     "mocha": "1.x.x",
     "chai": "1.x.x",
     "coffee-script": "1.7.x",
