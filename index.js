@@ -126,7 +126,8 @@
     _.defaults(options, {
       middleware: true, // allow for skipping middleware with false
       requireAuthenticationCode: true, // allow for no authentication code on docs (not recommended),
-      decryptPostSave: true // allow for skipping the decryption after save for improved performance
+      decryptPostSave: true, // allow for skipping the decryption after save for improved performance
+      _suppressDuplicatePluginError: false // used for testing only
     });
 
     // Encryption Keys //
@@ -276,6 +277,22 @@
         return false;
       }
     };
+
+
+    // Ensure plugin only added once per schema
+    if(schema.statics._mongooseEncryptionInstalled){
+      if(!options._suppressDuplicatePluginError){
+        throw new Error(
+          'Mongoose encryption plugin can only be added once per schema.\n\n' +
+          'If you are running migrations, please remove encryption middleware first. ' +
+          'Migrations should be run in a script where `encrypt.migrations` is added to the schema, '+
+          'however the standard `encrypt` middleware should not be present at the same time. '
+          );
+      }
+
+    } else {
+      schema.statics._mongooseEncryptionInstalled = true;
+    }
 
 
     // Middleware //

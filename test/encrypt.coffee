@@ -59,6 +59,12 @@ describe 'encrypt plugin', ->
     AuthenticateSyncFnTestModel = mongoose.model 'AuthenticateSyncFnTest', mongoose.Schema({}).plugin(encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'test')
     assert.isFunction (new AuthenticateSyncFnTestModel).authenticateSync
 
+  it 'should throw an error if installed twice on the same schema', ->
+    EncryptedSchema = mongoose.Schema
+      text: type: String
+    EncryptedSchema.plugin encrypt, secret: secret
+    assert.throw -> EncryptedSchema.plugin encrypt, secret: secret
+
 describe 'new EncryptedModel', ->
   it 'should remain unaltered', (done) ->
     simpleTestDoc1 = new BasicEncryptedModel
@@ -1914,7 +1920,8 @@ describe 'migrations', ->
           # add back in middleware
           PreviouslyUnencryptedSchema.plugin encrypt,
             encryptionKey: encryptionKey
-            signingKey: signingKey
+            signingKey: signingKey,
+            _suppressDuplicatePluginError: true # to allow for this test
 
           PreviouslyUnencryptedModel.findById(@docId).lean().exec (err, migratedDoc) =>
             assert.equal err, null
@@ -2064,10 +2071,23 @@ describe 'migrations', ->
         # add back in middleware
         UnsignedSchema.plugin encrypt,
           encryptionKey: encryptionKey
-          signingKey: signingKey
+          signingKey: signingKey,
+          _suppressDuplicatePluginError: true # to allow for this test
 
         UnsignedModel.findById @docId, (err, signedDoc) =>
           assert.equal err, null, 'There should be no authentication error after signing'
           assert.propertyVal signedDoc, 'text', 'Plain'
           assert.propertyVal signedDoc, 'bool', true
           done()
+
+  describe 'installing on schema alongside standard encrypt plugin', ->
+      it 'should throw an error if installed after standard encrypt plugin', ->
+        EncryptedSchema = mongoose.Schema
+          text: type: String
+        EncryptedSchema.plugin encrypt, secret: secret
+        assert.throw -> EncryptedSchema.plugin encrypt.migrations, secret: secret
+      it 'should cause encrypt plugin to throw an error if installed first', ->
+        EncryptedSchema = mongoose.Schema
+          text: type: String
+        EncryptedSchema.plugin encrypt.migrations, secret: secret
+        assert.throw -> EncryptedSchema.plugin encrypt, secret: secret
