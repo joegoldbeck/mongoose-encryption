@@ -527,9 +527,18 @@ describe 'document.encrypt()', ->
 
 
 describe 'document.decrypt()', ->
-  simpleTestDoc6 = null
   beforeEach (done) ->
-    simpleTestDoc6 = new BasicEncryptedModel
+    @encryptedSimpleTestDoc = new BasicEncryptedModel
+      _id: '584b1e7de752fcf3be8cd086'
+      idx: 'Indexed'
+      _ct: new Buffer("610bbddbf35455e9a4fcf2428bb6cd68f39fdaece7e851cb213b1be81b10559d1af6d7c205752d2a6620100871d0e" +
+                      "95d3609d4ee81795dcc7ef5130b80f117eb12f557a08d4837609f37d24af8d64f8b5072747e1a9e4585fc07d76720" +
+                      "5e8289235019f818ad7ed9dbb90844d6a42189ab5a8cdc303e60256dbc5daa76386422de8cf1af40ea1c07b7720e5" +
+                      "3787515a959537f4dffc663c69d29e614621bc7a345ab31f9b8931277d7577962e9558119b9d5d7db0a3b1c298afd" +
+                      "eabe11581684b62ffaa58a9877d7ceeeb2ea158df3db7881bfedb40ed4d4de7a6465cf1e1148582714279bd0e0cbf" +
+                      "f145e0bddc1ff3f5e2e6cc8b39f9640e433e4c4140e2095e6", 'hex');
+
+    @simpleTestDoc6 = new BasicEncryptedModel
       text: 'Unencrypted text'
       bool: true
       num: 42
@@ -540,57 +549,73 @@ describe 'document.decrypt()', ->
       buf: new Buffer 'abcdefg'
       idx: 'Indexed'
 
-    simpleTestDoc6.encrypt (err) ->
-      assert.equal err, null
-      done()
-
-  after (done) ->
-    simpleTestDoc6.remove (err) ->
+    @simpleTestDoc6.encrypt (err) ->
       assert.equal err, null
       done()
 
   it 'should return an unencrypted version', (done) ->
-    simpleTestDoc6.decrypt (err) ->
+    @encryptedSimpleTestDoc.decrypt (err) =>
       assert.equal err, null
-      assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
-      assert.propertyVal simpleTestDoc6, 'bool', true
-      assert.propertyVal simpleTestDoc6, 'num', 42
-      assert.property simpleTestDoc6, 'date'
-      assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-      assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
-      assert.lengthOf simpleTestDoc6.arr, 2
-      assert.equal simpleTestDoc6.arr[0], 'alpha'
-      assert.equal simpleTestDoc6.arr[1], 'bravo'
-      assert.property simpleTestDoc6, 'mix'
-      assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
-      assert.property simpleTestDoc6, 'buf'
-      assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
-      assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
-      assert.property simpleTestDoc6, '_id'
-      assert.notProperty simpleTestDoc6, '_ct'
+      assert.propertyVal @encryptedSimpleTestDoc, 'text', 'Unencrypted text'
+      assert.propertyVal @encryptedSimpleTestDoc, 'bool', true
+      assert.propertyVal @encryptedSimpleTestDoc, 'num', 42
+      assert.property @encryptedSimpleTestDoc, 'date'
+      assert.equal @encryptedSimpleTestDoc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+      assert.propertyVal @encryptedSimpleTestDoc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.lengthOf @encryptedSimpleTestDoc.arr, 2
+      assert.equal @encryptedSimpleTestDoc.arr[0], 'alpha'
+      assert.equal @encryptedSimpleTestDoc.arr[1], 'bravo'
+      assert.property @encryptedSimpleTestDoc, 'mix'
+      assert.deepEqual @encryptedSimpleTestDoc.mix, { str: 'A string', bool: false }
+      assert.property @encryptedSimpleTestDoc, 'buf'
+      assert.equal @encryptedSimpleTestDoc.buf.toString(), 'abcdefg'
+      assert.propertyVal @encryptedSimpleTestDoc, 'idx', 'Indexed'
+      assert.property @encryptedSimpleTestDoc, '_id'
+      assert.notProperty @encryptedSimpleTestDoc, '_ct'
+      done()
+
+  it 'should return an unencrypted version when run after #encrypt', (done) ->
+    @simpleTestDoc6.decrypt (err) =>
+      assert.equal err, null
+      assert.propertyVal @simpleTestDoc6, 'text', 'Unencrypted text'
+      assert.propertyVal @simpleTestDoc6, 'bool', true
+      assert.propertyVal @simpleTestDoc6, 'num', 42
+      assert.property @simpleTestDoc6, 'date'
+      assert.equal @simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+      assert.propertyVal @simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.lengthOf @simpleTestDoc6.arr, 2
+      assert.equal @simpleTestDoc6.arr[0], 'alpha'
+      assert.equal @simpleTestDoc6.arr[1], 'bravo'
+      assert.property @simpleTestDoc6, 'mix'
+      assert.deepEqual @simpleTestDoc6.mix, { str: 'A string', bool: false }
+      assert.property @simpleTestDoc6, 'buf'
+      assert.equal @simpleTestDoc6.buf.toString(), 'abcdefg'
+      assert.propertyVal @simpleTestDoc6, 'idx', 'Indexed'
+      assert.property @simpleTestDoc6, '_id'
+      assert.notProperty @simpleTestDoc6, '_ct'
       done()
 
   it 'should return an unencrypted version even if document already decrypted', (done) ->
-    simpleTestDoc6.decrypt (err) ->
+    @encryptedSimpleTestDoc.decrypt (err) =>
       assert.equal err, null
-      simpleTestDoc6.decrypt (err) ->
+      @encryptedSimpleTestDoc.decrypt (err) =>
         assert.equal err, null
-        assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
-        assert.propertyVal simpleTestDoc6, 'bool', true
-        assert.propertyVal simpleTestDoc6, 'num', 42
-        assert.property simpleTestDoc6, 'date'
-        assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-        assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
-        assert.lengthOf simpleTestDoc6.arr, 2
-        assert.equal simpleTestDoc6.arr[0], 'alpha'
-        assert.equal simpleTestDoc6.arr[1], 'bravo'
-        assert.property simpleTestDoc6, 'mix'
-        assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
-        assert.property simpleTestDoc6, 'buf'
-        assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
-        assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
-        assert.property simpleTestDoc6, '_id'
-        assert.notProperty simpleTestDoc6, '_ct'
+        assert.propertyVal @encryptedSimpleTestDoc, 'text', 'Unencrypted text'
+        assert.propertyVal @encryptedSimpleTestDoc, 'bool', true
+        assert.propertyVal @encryptedSimpleTestDoc, 'num', 42
+        assert.property @encryptedSimpleTestDoc, 'date'
+        assert.equal @encryptedSimpleTestDoc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+        assert.propertyVal @encryptedSimpleTestDoc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+        assert.lengthOf @encryptedSimpleTestDoc.arr, 2
+        assert.equal @encryptedSimpleTestDoc.arr[0], 'alpha'
+        assert.equal @encryptedSimpleTestDoc.arr[1], 'bravo'
+        assert.property @encryptedSimpleTestDoc, 'mix'
+        assert.deepEqual @encryptedSimpleTestDoc.mix, { str: 'A string', bool: false }
+        assert.property @encryptedSimpleTestDoc, 'buf'
+        assert.equal @encryptedSimpleTestDoc.buf.toString(), 'abcdefg'
+        assert.propertyVal @encryptedSimpleTestDoc, 'idx', 'Indexed'
+        assert.property @encryptedSimpleTestDoc, '_id'
+        assert.notProperty @encryptedSimpleTestDoc, '_ct'
         done()
 
 
