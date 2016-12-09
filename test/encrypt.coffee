@@ -528,7 +528,7 @@ describe 'document.encrypt()', ->
 
 describe 'document.decrypt()', ->
   simpleTestDoc6 = null
-  before (done) ->
+  beforeEach (done) ->
     simpleTestDoc6 = new BasicEncryptedModel
       text: 'Unencrypted text'
       bool: true
@@ -573,23 +573,25 @@ describe 'document.decrypt()', ->
   it 'should return an unencrypted version even if document already decrypted', (done) ->
     simpleTestDoc6.decrypt (err) ->
       assert.equal err, null
-      assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
-      assert.propertyVal simpleTestDoc6, 'bool', true
-      assert.propertyVal simpleTestDoc6, 'num', 42
-      assert.property simpleTestDoc6, 'date'
-      assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-      assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
-      assert.lengthOf simpleTestDoc6.arr, 2
-      assert.equal simpleTestDoc6.arr[0], 'alpha'
-      assert.equal simpleTestDoc6.arr[1], 'bravo'
-      assert.property simpleTestDoc6, 'mix'
-      assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
-      assert.property simpleTestDoc6, 'buf'
-      assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
-      assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
-      assert.property simpleTestDoc6, '_id'
-      assert.notProperty simpleTestDoc6, '_ct'
-      done()
+      simpleTestDoc6.decrypt (err) ->
+        assert.equal err, null
+        assert.propertyVal simpleTestDoc6, 'text', 'Unencrypted text'
+        assert.propertyVal simpleTestDoc6, 'bool', true
+        assert.propertyVal simpleTestDoc6, 'num', 42
+        assert.property simpleTestDoc6, 'date'
+        assert.equal simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
+        assert.propertyVal simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+        assert.lengthOf simpleTestDoc6.arr, 2
+        assert.equal simpleTestDoc6.arr[0], 'alpha'
+        assert.equal simpleTestDoc6.arr[1], 'bravo'
+        assert.property simpleTestDoc6, 'mix'
+        assert.deepEqual simpleTestDoc6.mix, { str: 'A string', bool: false }
+        assert.property simpleTestDoc6, 'buf'
+        assert.equal simpleTestDoc6.buf.toString(), 'abcdefg'
+        assert.propertyVal simpleTestDoc6, 'idx', 'Indexed'
+        assert.property simpleTestDoc6, '_id'
+        assert.notProperty simpleTestDoc6, '_ct'
+        done()
 
 
 describe 'document.decryptSync()', ->
