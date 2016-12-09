@@ -471,7 +471,7 @@ describe 'EncryptedModel.find() lean option', ->
 
 describe 'document.encrypt()', ->
   simpleTestDoc5 = null
-  before (done) ->
+  beforeEach (done) ->
     simpleTestDoc5 = new BasicEncryptedModel
       text: 'Unencrypted text'
       bool: true
@@ -484,11 +484,6 @@ describe 'document.encrypt()', ->
       idx: 'Indexed'
 
     simpleTestDoc5.encrypt (err) ->
-      assert.equal err, null
-      done()
-
-  after (done) ->
-    simpleTestDoc5.remove (err) ->
       assert.equal err, null
       done()
 
@@ -522,6 +517,11 @@ describe 'document.encrypt()', ->
     allAsciiDoc.encrypt (err) ->
       assert.equal err, null
       assert.notMatch allAsciiDoc.toObject()._ct.toString(), /^[\x00-\x7F]*$/
+      done()
+
+  it 'should pass an error when called on a document which is already encrypted', (done) ->
+    simpleTestDoc5.encrypt (err) ->
+      assert.ok err
       done()
 
 
