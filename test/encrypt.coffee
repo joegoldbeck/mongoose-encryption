@@ -221,6 +221,57 @@ describe 'document.save() on nested document', ->
       assert.propertyVal docs[0].nest, 'areBirdsPretty', true
       done()
 
+describe 'document.save() on simple nested document', ->
+  before ->
+    @schema = mongoose.Schema
+      birdColor: type: String
+      areBirdsPretty: type: Boolean
+
+    @schema.plugin encrypt, secret: secret, collectionId: 'schema', encryptedFields: ['birdColor']
+
+    @schemaWithNest = mongoose.Schema
+      nest: @schema
+
+    @ModelWithNest = mongoose.model 'SimpleNestedBird', @schemaWithNest
+
+  beforeEach (done) ->
+
+    @nestTestDoc = new @ModelWithNest
+      nest:
+        birdColor: 'blue'
+        areBirdsPretty: true
+
+    @nestTestDoc.save (err, doc) ->
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @nestTestDoc.remove (err) ->
+      assert.equal err, null
+      done()
+
+  it 'encrypts nested fields', (done) ->
+    @ModelWithNest.find(
+      _id: @nestTestDoc._id
+      'nest._ct': $exists: true
+      'nest.birdColor': $exists: false
+    ).lean().exec (err, docs) ->
+      assert.equal err, null
+      assert.lengthOf docs, 1
+      done()
+
+  it 'saves encrypted fields', (done) ->
+    @ModelWithNest.find
+      _id: @nestTestDoc._id
+      'nest._ct': $exists: true
+    , (err, docs) ->
+      assert.equal err, null
+      assert.lengthOf docs, 1
+      assert.isObject docs[0].nest
+      assert.propertyVal docs[0].nest, 'birdColor', 'blue'
+      assert.propertyVal docs[0].nest, 'areBirdsPretty', true
+      done()
+
 describe 'document.save() when only certain fields are encrypted', ->
   before ->
     PartiallyEncryptedModelSchema = mongoose.Schema
