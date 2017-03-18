@@ -1,5 +1,9 @@
 # Release Notes
 
+## v.1.5.0
+2017-3-18
+- Support `SingleNested` document as of mongoose 4.8.0 #50
+
 ## v.1.4.0
 2016-12-5
 - Throw error when plugin added twice, or migrations added alongside standard plugin. #42
