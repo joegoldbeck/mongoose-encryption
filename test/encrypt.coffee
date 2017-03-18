@@ -172,7 +172,7 @@ describe 'document.save()', ->
     assert @simpleTestDoc2.encrypt.calledBefore @simpleTestDoc2.sign, 'encrypted before signed'
     assert @simpleTestDoc2.sign.calledBefore @simpleTestDoc2.decryptSync, 'signed before decrypted'
 
-describe 'document.save() on nested document', ->
+describe 'document.save() on encrypted document which contains nesting', ->
   before ->
     @schemaWithNest = mongoose.Schema
       nest:
@@ -221,7 +221,7 @@ describe 'document.save() on nested document', ->
       assert.propertyVal docs[0].nest, 'areBirdsPretty', true
       done()
 
-describe 'document.save() on simple nested document', ->
+describe 'document.save() on encrypted nested document', ->
   before ->
     @schema = mongoose.Schema
       birdColor: type: String
