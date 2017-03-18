@@ -908,11 +908,8 @@ describe 'Array EmbeddedDocument', ->
         assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
 
       it 'should persist children as encrypted', (done) ->
-        @ParentModel.find
-          _id: @parentDoc._id
-          'children._ct': $exists: true
-          'children.text': $exists: false
-        , (err, docs) ->
+        @ParentModel.find(_id: @parentDoc._id).lean().exec (err, docs) ->
+          console.log(docs[0])
           assert.equal err, null
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
@@ -1996,12 +1993,15 @@ describe 'migrations', ->
           assert.equal err, null
 
           # add back in middleware
-          PreviouslyUnencryptedSchema.plugin encrypt,
+          PreviouslyUnencryptedSchemaMigrated = mongoose.Schema schemaObject
+          PreviouslyUnencryptedSchemaMigrated.plugin encrypt,
             encryptionKey: encryptionKey
-            signingKey: signingKey,
+            signingKey: signingKey
             _suppressDuplicatePluginError: true # to allow for this test
+            collectionId: 'FormerlyPlain'
+          PreviouslyUnencryptedModelMigrated = mongoose.model 'FormerlyPlain2', PreviouslyUnencryptedSchemaMigrated, 'formerlyplains'
 
-          PreviouslyUnencryptedModel.findById(@docId).lean().exec (err, migratedDoc) =>
+          PreviouslyUnencryptedModelMigrated.findById(@docId).lean().exec (err, migratedDoc) =>
             assert.equal err, null
             assert.notProperty migratedDoc, 'text', 'Should be encrypted in db after migration'
             assert.notProperty migratedDoc, 'bool'
@@ -2009,7 +2009,8 @@ describe 'migrations', ->
             assert.property migratedDoc, '_ct', 'Should have ciphertext in raw db after migration'
 
 
-            PreviouslyUnencryptedModel.findById @docId, (err, migratedDoc) =>
+            PreviouslyUnencryptedModelMigrated.findById @docId, (err, migratedDoc) =>
+              console.log(migratedDoc)
               assert.equal err, null, 'There should be no authentication error after migrated'
               assert.propertyVal migratedDoc, 'text', 'Plain'
               assert.propertyVal migratedDoc, 'bool', true
@@ -2017,7 +2018,7 @@ describe 'migrations', ->
               migratedDoc.save (err) =>
                 assert.equal err, null
 
-                PreviouslyUnencryptedModel.findById(@docId).lean().exec (err, migratedDoc) =>
+                PreviouslyUnencryptedModelMigrated.findById(@docId).lean().exec (err, migratedDoc) =>
                   assert.equal err, null
                   assert.notProperty migratedDoc, 'text', 'Should be encrypted in raw db after saved'
                   assert.notProperty migratedDoc, 'bool'
