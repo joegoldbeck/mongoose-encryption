@@ -908,8 +908,11 @@ describe 'Array EmbeddedDocument', ->
         assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
 
       it 'should persist children as encrypted', (done) ->
-        @ParentModel.find(_id: @parentDoc._id).lean().exec (err, docs) ->
-          console.log(docs[0])
+        @ParentModel.find
+          _id: @parentDoc._id
+          'children._ct': $exists: true
+          'children.text': $exists: false
+        , (err, docs) ->
           assert.equal err, null
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
