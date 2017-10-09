@@ -17,6 +17,10 @@ To authenticate, a signature is generated in the same fashion as above, and comp
 
 During `save`, documents are encrypted and then signed. During `find`, documents are authenticated and then decrypted
 
+## Before You Get Started
+
+Read the [Security Notes](#security-notes) below
+
 ## Installation
 
 `npm install mongoose-encryption`
