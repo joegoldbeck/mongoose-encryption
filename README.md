@@ -339,7 +339,7 @@ Huge thanks goes out to [Cinch Financial](https://www.cinchfinancial.com) for su
 
 The MIT License (MIT)
 
-Copyright (c) 2016 Joseph Goldbeck
+Copyright (c) 2016, 2017 Joseph Goldbeck
 
 Copyright (c) 2014-2015 Joseph Goldbeck and Connect Financial, LLC
 
