@@ -335,6 +335,8 @@ None of the authors are security experts. We relied on accepted tools and practi
 
 Huge thanks goes out to [Cinch Financial](https://www.cinchfinancial.com) for supporting this plugin through version 1.0, as well as [@stash](//github.com/stash) for pointing out the limitations of earlier versions which lacked authentication and providing invaluable guidance and review on version 0.12.0.
 
+Feel like contributing with different kinds of bits? Eth: 0xb53b70d5BE66a03E85F6502d1D060871a79a47f7
+
 ## License
 
 The MIT License (MIT)
