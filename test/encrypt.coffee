@@ -82,7 +82,7 @@ describe 'new EncryptedModel', ->
     assert.propertyVal simpleTestDoc1, 'num', 42
     assert.property simpleTestDoc1, 'date'
     assert.equal simpleTestDoc1.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-    assert.propertyVal simpleTestDoc1, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+    assert.equal simpleTestDoc1.id2.toString(), '5303e65d34e1e80d7a7ce212'
     assert.lengthOf simpleTestDoc1.arr, 2
     assert.equal simpleTestDoc1.arr[0], 'alpha'
     assert.equal simpleTestDoc1.arr[1], 'bravo'
@@ -356,7 +356,7 @@ describe 'EncryptedModel.create()', ->
       assert.propertyVal doc, 'num', 42
       assert.property doc, 'date'
       assert.equal doc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-      assert.propertyVal doc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.equal doc.id2.toString(), '5303e65d34e1e80d7a7ce212'
       assert.lengthOf doc.arr, 2
       assert.equal doc.arr[0], 'alpha'
       assert.equal doc.arr[1], 'bravo'
@@ -427,7 +427,7 @@ describe 'EncryptedModel.find()', ->
       assert.propertyVal doc, 'num', 42
       assert.property doc, 'date'
       assert.equal doc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-      assert.propertyVal doc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.equal doc.id2.toString(), '5303e65d34e1e80d7a7ce212'
       assert.lengthOf doc.arr, 2
       assert.equal doc.arr[0], 'alpha'
       assert.equal doc.arr[1], 'bravo'
@@ -612,7 +612,7 @@ describe 'document.decrypt()', ->
       assert.propertyVal @encryptedSimpleTestDoc, 'num', 42
       assert.property @encryptedSimpleTestDoc, 'date'
       assert.equal @encryptedSimpleTestDoc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-      assert.propertyVal @encryptedSimpleTestDoc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.equal @encryptedSimpleTestDoc.id2.toString(), '5303e65d34e1e80d7a7ce212'
       assert.lengthOf @encryptedSimpleTestDoc.arr, 2
       assert.equal @encryptedSimpleTestDoc.arr[0], 'alpha'
       assert.equal @encryptedSimpleTestDoc.arr[1], 'bravo'
@@ -633,7 +633,7 @@ describe 'document.decrypt()', ->
       assert.propertyVal @simpleTestDoc6, 'num', 42
       assert.property @simpleTestDoc6, 'date'
       assert.equal @simpleTestDoc6.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-      assert.propertyVal @simpleTestDoc6, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+      assert.equal @simpleTestDoc6.id2.toString(), '5303e65d34e1e80d7a7ce212'
       assert.lengthOf @simpleTestDoc6.arr, 2
       assert.equal @simpleTestDoc6.arr[0], 'alpha'
       assert.equal @simpleTestDoc6.arr[1], 'bravo'
@@ -656,7 +656,7 @@ describe 'document.decrypt()', ->
         assert.propertyVal @encryptedSimpleTestDoc, 'num', 42
         assert.property @encryptedSimpleTestDoc, 'date'
         assert.equal @encryptedSimpleTestDoc.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-        assert.propertyVal @encryptedSimpleTestDoc, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+        assert.equal @encryptedSimpleTestDoc.id2.toString(), '5303e65d34e1e80d7a7ce212'
         assert.lengthOf @encryptedSimpleTestDoc.arr, 2
         assert.equal @encryptedSimpleTestDoc.arr[0], 'alpha'
         assert.equal @encryptedSimpleTestDoc.arr[1], 'bravo'
@@ -700,7 +700,7 @@ describe 'document.decryptSync()', ->
     assert.propertyVal simpleTestDoc7, 'num', 42
     assert.property simpleTestDoc7, 'date'
     assert.equal simpleTestDoc7.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-    assert.propertyVal simpleTestDoc7, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+    assert.equal simpleTestDoc7.id2.toString(), '5303e65d34e1e80d7a7ce212'
     assert.lengthOf simpleTestDoc7.arr, 2
     assert.equal simpleTestDoc7.arr[0], 'alpha'
     assert.equal simpleTestDoc7.arr[1], 'bravo'
@@ -720,7 +720,7 @@ describe 'document.decryptSync()', ->
     assert.propertyVal simpleTestDoc7, 'num', 42
     assert.property simpleTestDoc7, 'date'
     assert.equal simpleTestDoc7.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-    assert.propertyVal simpleTestDoc7, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+    assert.equal simpleTestDoc7.id2.toString(), '5303e65d34e1e80d7a7ce212'
     assert.lengthOf simpleTestDoc7.arr, 2
     assert.equal simpleTestDoc7.arr[0], 'alpha'
     assert.equal simpleTestDoc7.arr[1], 'bravo'
@@ -1935,7 +1935,7 @@ describe 'migrations', ->
             assert.propertyVal migratedDoc1, 'num', 42
             assert.property migratedDoc1, 'date'
             assert.equal migratedDoc1.date.toString(), new Date("2014-05-19T16:39:07.536Z").toString()
-            assert.propertyVal migratedDoc1, 'id2', mongoose.Schema.Types.ObjectId '5303e65d34e1e80d7a7ce212'
+            assert.equal migratedDoc1.id2.toString(), '5303e65d34e1e80d7a7ce212'
             assert.lengthOf migratedDoc1.arr, 2
             assert.equal migratedDoc1.arr[0], 'alpha'
             assert.equal migratedDoc1.arr[1], 'bravo'
