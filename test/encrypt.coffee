@@ -1079,19 +1079,17 @@ describe 'Array EmbeddedDocument', ->
           _id: @parentDoc._id
           'children._ct': $exists: true
           'children.text': $exists: false
-        .exec()
-        .then (docs) ->
+        , (err, docs) ->
+          assert.equal err, null
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
           done()
-        , done
-        .end()
 
     describe 'document.find()', ->
       it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
         @ParentModel.findById @parentDoc._id
-        .exec()
-        .then (doc) ->
+        , (err, doc) ->
+          assert.equal err, null
           assert.propertyVal doc, 'text', 'Unencrypted text'
           assert.isArray doc.children
           assert.isObject doc.children[0]
@@ -1099,8 +1097,6 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
-        , done
-        .end()
 
     describe 'when child field is in additionalAuthenticatedFields on parent and child documents are tampered with by swapping their ciphertext', ->
       it 'should pass an error', (done) ->
@@ -1289,7 +1285,6 @@ describe 'Array EmbeddedDocument', ->
 
         assert.strictEqual console.warn.callCount, 1
         assert.strictEqual console.warn.firstCall.args[0], 'encryptedChildren plugin is not needed for mongoose versions above 4.1.1, continuing without plugin.'
-        assert.strictEqual @ParentModelSchema.post.callCount, 0
 
       it 'should return unencrypted embedded documents', (done) ->
         return done() if mongoose.version < '4.1.1'
@@ -2013,7 +2008,6 @@ describe 'migrations', ->
 
 
             PreviouslyUnencryptedModelMigrated.findById @docId, (err, migratedDoc) =>
-              console.log(migratedDoc)
               assert.equal err, null, 'There should be no authentication error after migrated'
               assert.propertyVal migratedDoc, 'text', 'Plain'
               assert.propertyVal migratedDoc, 'bool', true
