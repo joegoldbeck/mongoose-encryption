@@ -1,6 +1,9 @@
 mongoose-encryption
 ==================
-[![npm version](https://badge.fury.io/js/mongoose-encryption.svg)](https://badge.fury.io/js/mongoose-encryption)[![Build Status](https://travis-ci.com/joegoldbeck/mongoose-encryption.svg?branch=master)](https://travis-ci.com/joegoldbeck/mongoose-encryption)
+
+[![npm version](https://badge.fury.io/js/mongoose-encryption.svg)](https://badge.fury.io/js/mongoose-encryption)
+[![Build Status](https://travis-ci.com/joegoldbeck/mongoose-encryption.svg?branch=master)](https://travis-ci.com/joegoldbeck/mongoose-encryption)
+[![GitHub license](https://img.shields.io/github/license/joegoldbeck/mongoose-encryption.svg)](https://github.com/joegoldbeck/mongoose-encryption/blob/master/LICENSE)
 
 Simple encryption and authentication for mongoose documents. Relies on the Node `crypto` module. Encryption and decryption happen transparently during save and find. Rather than encrypting fields individually, this plugin takes advantage of the BSON nature of mongoDB documents to encrypt multiple fields at once.
 
