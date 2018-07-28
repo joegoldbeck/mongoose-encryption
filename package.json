@@ -36,10 +36,10 @@
     "underscore": ">=1.5.0 <2.0.0"
   },
   "peerDependencies":{
-    "mongoose": ">4.1.1 <5.0.0"
+    "mongoose": ">=5.0.0"
   },
   "devDependencies": {
-    "mongoose": ">4.1.1 <5.0.0",
+    "mongoose": ">=5.0.0",
     "mocha": "1.x.x",
     "chai": "1.x.x",
     "coffee-script": "1.7.x",
