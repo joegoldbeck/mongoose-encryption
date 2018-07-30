@@ -46,7 +46,7 @@
     "sinon": "~1.10.3"
   },
   "engines": {
-    "node": ">= 0.10.25"
+    "node": ">=4.4.5"
   },
   "scripts": {
     "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000"
