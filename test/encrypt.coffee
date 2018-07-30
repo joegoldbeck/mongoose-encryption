@@ -963,8 +963,8 @@ describe 'Array EmbeddedDocument', ->
 
         ParentModelSchema.plugin encrypt.encryptedChildren
 
-        @ParentModel = mongoose.model 'Parent', ParentModelSchema
-        @ChildModel = mongoose.model 'Child', ChildModelSchema
+        @ParentModel = mongoose.model 'ParentEC', ParentModelSchema
+        @ChildModel = mongoose.model 'ChildOfECP', ChildModelSchema
 
       beforeEach (done) ->
         @parentDoc = new @ParentModel
