@@ -1,5 +1,10 @@
 # Release Notes
 
+## v.2.0.0
+2018-7-30
+- Support Mongoose 5 #70 #71 #75 #79
+- Drop support for Mongoose 3 & 4
+
 ## v.1.5.0
 2017-3-18
 - Support `SingleNested` document as of mongoose 4.8.0 #50
@@ -30,7 +35,6 @@
 2015-11-4
 - Fix buffer handling for Node 4.x compatibility
 
-
 ## v.1.2.1
 2015-8-31
 - Fix authentication when adding or removing a child from a subcollection
@@ -51,7 +55,6 @@
 - Update readme
 - No code changes
 
-
 ## v 1.0.0
 2015-03-03
 - API declared stable
@@ -61,7 +64,6 @@
 2015-02-21
 - Add `decryptPostSave` option
 - Implement basic support for nested schemas
-
 
 ## v 0.12.0
 2015-02-14
