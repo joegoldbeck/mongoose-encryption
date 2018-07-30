@@ -39,9 +39,10 @@
     "mongoose": ">=5.0.0"
   },
   "devDependencies": {
-    "mocha": "^5.2.0",
+    "mocha": "^1.0.0",
     "mongoose": ">=5.0.0",
-    "chai": "1.x.x",
+    "chai": "^1.0.0",
+    "coffeescript": "^2.0.0",
     "sinon": "~1.10.3"
   },
   "engines": {
