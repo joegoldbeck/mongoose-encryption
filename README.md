@@ -118,7 +118,7 @@ PowerUser = mongoose.model('PowerUser', poweruserSchema);
 
 ### Encrypt Specific Fields of Sub Docs
 
-You can even encrypt fields of sub-documents, you just need to add the `encrypt` plugin to the subdocument schema. *Subdocuments are not self-authenticated*, so you should consider adding the `encrypt` plugin to the parent schema as well for the authentication it provides, or failing that, the `encrypt.encryptedChildren` plugin to the parent if you want continue to work with documents following saves.
+You can even encrypt fields of sub-documents, you just need to add the `encrypt` plugin to the subdocument schema. *Subdocuments are not self-authenticated*, so you should consider adding the `encrypt` plugin to the parent schema as well for the authentication it provides, or if you would like to avoid that overhead, add the `encrypt.encryptedChildren` plugin to the parent schema if you will continue to work with documents following saves.
 ```
 var hidingPlaceSchema = new Schema({
   latitude: Number,
