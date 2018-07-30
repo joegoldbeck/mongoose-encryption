@@ -42,8 +42,8 @@
     "mocha": "^1.0.0",
     "mongoose": ">=5.0.0",
     "chai": "^1.0.0",
-    "coffeescript": "^2.0.0",
-    "sinon": "~1.10.3"
+    "coffeescript": "^1.7.0",
+    "sinon": "^1.10.3"
   },
   "engines": {
     "node": ">=4.4.5"
