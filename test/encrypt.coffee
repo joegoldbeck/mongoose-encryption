@@ -1186,19 +1186,17 @@ describe 'Array EmbeddedDocument', ->
       @ParentModel2 = mongoose.model 'ParentWithoutPlugin', ParentModelSchema
       @ChildModel2 = mongoose.model 'ChildAgain', ChildModelSchema
 
-    it 'should return encrypted embedded documents', (done) ->
+    it 'should return unencrypted embedded documents', (done) ->
       doc = new @ParentModel2
         text: 'here it is'
         children: [{text: 'Child unencrypted text'}]
-
       doc.save (err) ->
         assert.ok err, 'There should be a validation error'
         assert.propertyVal doc, 'text', 'here it is'
         assert.isArray doc.children
-        assert.isObject doc.children[0]
         assert.property doc.children[0], '_id'
-        assert.property doc.children[0], '_ct'
-        assert.notProperty doc.children[0], 'text'
+        assert.notProperty doc.children[0], '_ct'
+        assert.property doc.children[0], 'text', 'Child unencrypted text'
         done()
 
   describe 'Encrypted embedded document when parent has validation error and has encryptedChildren plugin', ->
@@ -1230,11 +1228,6 @@ describe 'Array EmbeddedDocument', ->
 
     after ->
       @sandbox.restore()
-
-    it 'adds the plugin', ->
-      assert.strictEqual console.warn.callCount, 0
-      assert.strictEqual @ParentModelSchema.post.callCount, 1
-      assert.strictEqual @ParentModelSchema.post.firstCall.args[0], 'validate'
 
     it 'should return unencrypted embedded documents', (done) ->
       doc = new @ParentModel2
