@@ -391,7 +391,6 @@ describe 'EncryptedModel.create()', ->
 describe 'EncryptedModel.find()', ->
   simpleTestDoc3 = null
 
-
   before (done) ->
     @sandbox = sinon.sandbox.create()
     @sandbox.spy BasicEncryptedModel.prototype, 'authenticateSync'
@@ -962,7 +961,7 @@ describe 'Array EmbeddedDocument', ->
           text: type: String
           children: [ChildModelSchema]
 
-        ParentModelSchema.plugin encryptedChildren
+        ParentModelSchema.plugin encrypt.encryptedChildren
 
         @ParentModel = mongoose.model 'Parent', ParentModelSchema
         @ChildModel = mongoose.model 'Child', ChildModelSchema
