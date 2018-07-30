@@ -32,7 +32,8 @@
     "dotty": "0.0.2",
     "mpath": "0.2.1",
     "json-stable-stringify": "1.0.0",
-    "underscore": ">=1.5.0 <2.0.0"
+    "semver": "^5.5.0",
+    "underscore": "^1.5.0"
   },
   "peerDependencies":{
     "mongoose": ">=5.0.0"
