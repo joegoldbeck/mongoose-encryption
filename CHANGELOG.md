@@ -1,5 +1,9 @@
 # Release Notes
 
+## v.2.0.1
+2018-7-30
+- Upgrade dependencies
+
 ## v.2.0.0
 2018-7-30
 - Support Mongoose 5 #70 #71 #75 #79
