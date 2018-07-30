@@ -42,7 +42,6 @@
     "mocha": "^5.2.0",
     "mongoose": ">=5.0.0",
     "chai": "1.x.x",
-    "coffeescript": "1.7.x",
     "sinon": "~1.10.3"
   },
   "engines": {
