@@ -872,83 +872,165 @@ describe '"decryptPostSave" option', ->
 
 describe 'Array EmbeddedDocument', ->
   describe 'when only child is encrypted', ->
-    before ->
-      ChildModelSchema = mongoose.Schema
-        text: type: String
+    describe 'and parent does not have encryptedChildren plugin', ->
+      before ->
+        ChildModelSchema = mongoose.Schema
+          text: type: String
 
-      ChildModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
+        ChildModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
 
-      ParentModelSchema = mongoose.Schema
-        text: type: String
-        children: [ChildModelSchema]
+        ParentModelSchema = mongoose.Schema
+          text: type: String
+          children: [ChildModelSchema]
 
-      @ParentModel = mongoose.model 'Parent', ParentModelSchema
-      @ChildModel = mongoose.model 'Child', ChildModelSchema
+        @ParentModel = mongoose.model 'Parent', ParentModelSchema
+        @ChildModel = mongoose.model 'Child', ChildModelSchema
 
-    beforeEach (done) ->
-      @parentDoc = new @ParentModel
-        text: 'Unencrypted text'
+      beforeEach (done) ->
+        @parentDoc = new @ParentModel
+          text: 'Unencrypted text'
 
-      childDoc = new @ChildModel
-        text: 'Child unencrypted text'
+        childDoc = new @ChildModel
+          text: 'Child unencrypted text'
 
-      childDoc2 = new @ChildModel
-        text: 'Second unencrypted text'
+        childDoc2 = new @ChildModel
+          text: 'Second unencrypted text'
 
-      @parentDoc.children.addToSet childDoc
-      @parentDoc.children.addToSet childDoc2
+        @parentDoc.children.addToSet childDoc
+        @parentDoc.children.addToSet childDoc2
 
-      @parentDoc.save done
+        @parentDoc.save done
 
-    after (done) ->
-      @parentDoc.remove done
+      after (done) ->
+        @parentDoc.remove done
 
-    describe 'document.save()', ->
-      it 'should have decrypted fields', ->
-        assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
+      describe 'document.save()', ->
+        it 'should not have decrypted fields', ->
+          assert.equal @parentDoc.children[0].text, undefined
 
-      it 'should persist children as encrypted', (done) ->
-        @ParentModel.find
-          _id: @parentDoc._id
-          'children._ct': $exists: true
-          'children.text': $exists: false
-        , (err, docs) ->
-          assert.equal err, null
-          assert.lengthOf docs, 1
-          assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
-          done()
+        it 'should persist children as encrypted', (done) ->
+          @ParentModel.find
+            _id: @parentDoc._id
+            'children._ct': $exists: true
+            'children.text': $exists: false
+          , (err, docs) ->
+            assert.equal err, null
+            assert.lengthOf docs, 1
+            assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
+            done()
 
-    describe 'document.find()', ->
-      it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
-        @ParentModel.findById @parentDoc._id, (err, doc) ->
-          assert.equal err, null
-          assert.propertyVal doc, 'text', 'Unencrypted text'
-          assert.isArray doc.children
-          assert.isObject doc.children[0]
-          assert.property doc.children[0], 'text', 'Child unencrypted text'
-          assert.property doc.children[0], '_id'
-          assert.notProperty doc.children[0], '_ct'
-          done()
+      describe 'document.find()', ->
+        it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
+          @ParentModel.findById @parentDoc._id, (err, doc) ->
+            assert.equal err, null
+            assert.propertyVal doc, 'text', 'Unencrypted text'
+            assert.isArray doc.children
+            assert.isObject doc.children[0]
+            assert.property doc.children[0], 'text', 'Child unencrypted text'
+            assert.property doc.children[0], '_id'
+            assert.notProperty doc.children[0], '_ct'
+            done()
 
-    describe 'tampering with child documents by swapping their ciphertext', ->
-      it 'should not cause an error because embedded documents are not self-authenticated', (done) ->
-        @ParentModel.findById(@parentDoc._id).lean().exec (err, doc) =>
-          assert.equal err, null
-          assert.isArray doc.children
+      describe 'tampering with child documents by swapping their ciphertext', ->
+        it 'should not cause an error because embedded documents are not self-authenticated', (done) ->
+          @ParentModel.findById(@parentDoc._id).lean().exec (err, doc) =>
+            assert.equal err, null
+            assert.isArray doc.children
 
-          childDoc1CipherText = doc.children[0]._ct
-          childDoc2CipherText = doc.children[1]._ct
+            childDoc1CipherText = doc.children[0]._ct
+            childDoc2CipherText = doc.children[1]._ct
 
-          @ParentModel.update { _id: @parentDoc._id }
-            , { $set : {'children.0._ct': childDoc2CipherText, 'children.1._ct': childDoc1CipherText } }
-            , (err) =>
-              assert.equal err, null
-              @ParentModel.findById @parentDoc._id, (err, doc) ->
+            @ParentModel.update { _id: @parentDoc._id }
+              , { $set : {'children.0._ct': childDoc2CipherText, 'children.1._ct': childDoc1CipherText } }
+              , (err) =>
                 assert.equal err, null
-                assert.isArray doc.children
-                assert.property doc.children[0], 'text', 'Second unencrypted text', 'Ciphertext was swapped'
-                assert.property doc.children[1], 'text', 'Child unencrypted text', 'Ciphertext was swapped'
-                done()
+                @ParentModel.findById @parentDoc._id, (err, doc) ->
+                  assert.equal err, null
+                  assert.isArray doc.children
+                  assert.property doc.children[0], 'text', 'Second unencrypted text', 'Ciphertext was swapped'
+                  assert.property doc.children[1], 'text', 'Child unencrypted text', 'Ciphertext was swapped'
+                  done()
+
+    describe 'and parent has encryptedChildren plugin', ->
+      before ->
+        ChildModelSchema = mongoose.Schema
+          text: type: String
+
+        ChildModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey
+
+        ParentModelSchema = mongoose.Schema
+          text: type: String
+          children: [ChildModelSchema]
+
+        ParentModelSchema.plugin encryptedChildren
+
+        @ParentModel = mongoose.model 'Parent', ParentModelSchema
+        @ChildModel = mongoose.model 'Child', ChildModelSchema
+
+      beforeEach (done) ->
+        @parentDoc = new @ParentModel
+          text: 'Unencrypted text'
+
+        childDoc = new @ChildModel
+          text: 'Child unencrypted text'
+
+        childDoc2 = new @ChildModel
+          text: 'Second unencrypted text'
+
+        @parentDoc.children.addToSet childDoc
+        @parentDoc.children.addToSet childDoc2
+
+        @parentDoc.save done
+
+      after (done) ->
+        @parentDoc.remove done
+
+      describe 'document.save()', ->
+        it 'should have decrypted fields', ->
+          assert.equal @parentDoc.children[0].text, 'Child unencrypted text'
+
+        it 'should persist children as encrypted', (done) ->
+          @ParentModel.find
+            _id: @parentDoc._id
+            'children._ct': $exists: true
+            'children.text': $exists: false
+          , (err, docs) ->
+            assert.equal err, null
+            assert.lengthOf docs, 1
+            assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
+            done()
+
+      describe 'document.find()', ->
+        it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
+          @ParentModel.findById @parentDoc._id, (err, doc) ->
+            assert.equal err, null
+            assert.propertyVal doc, 'text', 'Unencrypted text'
+            assert.isArray doc.children
+            assert.isObject doc.children[0]
+            assert.property doc.children[0], 'text', 'Child unencrypted text'
+            assert.property doc.children[0], '_id'
+            assert.notProperty doc.children[0], '_ct'
+            done()
+
+      describe 'tampering with child documents by swapping their ciphertext', ->
+        it 'should not cause an error because embedded documents are not self-authenticated', (done) ->
+          @ParentModel.findById(@parentDoc._id).lean().exec (err, doc) =>
+            assert.equal err, null
+            assert.isArray doc.children
+
+            childDoc1CipherText = doc.children[0]._ct
+            childDoc2CipherText = doc.children[1]._ct
+
+            @ParentModel.update { _id: @parentDoc._id }
+              , { $set : {'children.0._ct': childDoc2CipherText, 'children.1._ct': childDoc1CipherText } }
+              , (err) =>
+                assert.equal err, null
+                @ParentModel.findById @parentDoc._id, (err, doc) ->
+                  assert.equal err, null
+                  assert.isArray doc.children
+                  assert.property doc.children[0], 'text', 'Second unencrypted text', 'Ciphertext was swapped'
+                  assert.property doc.children[1], 'text', 'Child unencrypted text', 'Ciphertext was swapped'
+                  done()
 
     describe 'when child is encrypted and authenticated', ->
       before ->
@@ -1200,7 +1282,6 @@ describe 'Array EmbeddedDocument', ->
         done()
 
   describe 'Encrypted embedded document when parent has validation error and has encryptedChildren plugin', ->
-
     before ->
       ChildModelSchema = mongoose.Schema
         text: type: String
