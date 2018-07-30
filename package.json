@@ -39,7 +39,7 @@
     "mongoose": ">=5.0.0"
   },
   "devDependencies": {
-    "mocha": "1.x.x",
+    "mocha": "^5.2.0",
     "mongoose": ">=5.0.0",
     "chai": "1.x.x",
     "coffeescript": "1.7.x",
