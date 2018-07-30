@@ -49,6 +49,6 @@
     "node": ">= 0.10.25"
   },
   "scripts": {
-    "test": "mocha ./test --compilers coffee:coffee-script/register --timeout 3000"
+    "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000"
   }
 }
