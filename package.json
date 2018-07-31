@@ -27,12 +27,11 @@
   "homepage": "https://github.com/joegoldbeck/mongoose-encryption",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.6.1",
-    "buffer-equal-constant-time": "^1.0.1",
-    "dotty": "~0.1.0",
-    "mpath": "~0.4.1",
-    "json-stable-stringify": "^1.0.0",
-    "semver": "^5.5.0",
+    "buffer-equal-constant-time": "1.0.1",
+    "dotty": "0.1.0",
+    "mpath": "0.4.1",
+    "json-stable-stringify": "1.0.1",
+    "semver": "5.5.0",
     "underscore": "^1.5.0"
   },
   "peerDependencies": {
