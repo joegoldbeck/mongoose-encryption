@@ -161,6 +161,7 @@ describe('new EncryptedModel', function() {
       },
       buf: Buffer.from('abcdefg')
     });
+    console.log(simpleTestDoc1); // FIXME remove
     assert.propertyVal(simpleTestDoc1, 'text', 'Unencrypted text');
     assert.propertyVal(simpleTestDoc1, 'bool', true);
     assert.propertyVal(simpleTestDoc1, 'num', 42);
