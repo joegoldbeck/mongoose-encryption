@@ -427,10 +427,10 @@ describe('document.save() when only certain fields are encrypted', function() {
       encryptedText: 'Encrypted Text',
       unencryptedText: 'Unencrypted Text'
     });
-    this.partiallyEncryptedDoc.save();
+    await this.partiallyEncryptedDoc.save();
   });
   afterEach(async function() {
-    this.partiallyEncryptedDoc.remove();
+    await this.partiallyEncryptedDoc.remove();
   });
   it('should have decrypted fields', function() {
     assert.equal(this.partiallyEncryptedDoc.encryptedText, 'Encrypted Text');
