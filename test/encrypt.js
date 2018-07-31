@@ -1062,28 +1062,18 @@ describe('"decryptPostSave" option', function() {
     await this.HighPerformanceModel.remove();
   });
   it('saves encrypted fields correctly', async function() {
-    return this.doc.save(
-      (function(_this) {
-        return function(err) {
-          return this.HighPerformanceModel.find(
-            {
-              _id: this.doc._id,
-              _ct: {
-                $exists: true
-              },
-              text: {
-                $exists: false
-              }
-            },
-            function(err, docs) {
-              assert.lengthOf(docs, 1);
-              assert.propertyVal(docs[0], 'text', 'Unencrypted text');
-              done();
-            }
-          );
-        };
-      })(this)
-    );
+    await this.doc.save();
+    const docs = await this.HighPerformanceModel.find({
+      _id: this.doc._id,
+      _ct: {
+        $exists: true
+      },
+      text: {
+        $exists: false
+      }
+    });
+    assert.lengthOf(docs, 1);
+    assert.propertyVal(docs[0], 'text', 'Unencrypted text');
   });
   it('returns encrypted data after save', async function() {
     const savedDoc = await this.doc.save();
@@ -1813,17 +1803,14 @@ describe('Array EmbeddedDocument', function() {
         buf: Buffer.from('abcdefg'),
         idx: 'Indexed'
       });
-      return this.testDoc.sign(function(err) {
-        done();
-      });
+      await this.testDoc.sign();
     });
     after(async function() {
-      return this.testDoc.remove();
+      await this.testDoc.remove();
     });
-    it('should return an signed version', async function() {
+    it('should return an signed version', function() {
       assert.property(this.testDoc, '_ac');
       this.initialAC = this.testDoc._ac;
-      done();
     });
     it('should use the same signature if signed twice', async function() {
       return this.testDoc.sign(
@@ -1870,18 +1857,11 @@ describe('Array EmbeddedDocument', function() {
     it('should return an signed version', async function() {
       assert.property(this.testDoc, '_ac');
       this.initialAC = this.testDoc._ac;
-      done();
     });
     it('should use the same signature if signed twice', async function() {
-      return this.testDoc.sign(
-        (function(_this) {
-          return function(err) {
-            assert.property(this.testDoc, '_ac');
-            assert.ok(bufferEqual(this.testDoc._ac, this.initialAC));
-            done();
-          };
-        })(this)
-      );
+      await this.testDoc.sign();
+      assert.property(this.testDoc, '_ac');
+      assert.ok(bufferEqual(this.testDoc._ac, this.initialAC));
     });
   });
 
@@ -1902,12 +1882,10 @@ describe('Array EmbeddedDocument', function() {
         buf: Buffer.from('abcdefg'),
         idx: 'Indexed'
       });
-      return this.testDocAS.sign(function(err) {
-        done();
-      });
+      await this.testDocAS.sign();
     });
     afterEach(async function() {
-      return this.testDocAS.remove();
+      await this.testDocAS.remove();
     });
     it('should return without an error if document is signed and unmodified', function() {
       assert.doesNotThrow(
@@ -2097,12 +2075,10 @@ describe('Array EmbeddedDocument', function() {
         buf: Buffer.from('abcdefg'),
         idx: 'Indexed'
       });
-      return this.testDocA.sign(function(err) {
-        done();
-      });
+      await this.testDocA.sign();
     });
     afterEach(async function() {
-      return this.testDocA.remove();
+      await this.testDocA.remove();
     });
     it('should pass error if _ac has been modified to have authenticated fields = []', async function() {
       let acWithoutAFLength, bareBuffer, blankArrayBuffer;
@@ -2249,12 +2225,10 @@ describe('Array EmbeddedDocument', function() {
         bool: true,
         num: 42
       });
-      return this.testDocAF.save(function(err) {
-        done();
-      });
+      await this.testDocAF.save();
     });
     afterEach(async function() {
-      return this.testDocAF.remove();
+      await this.testDocAF.remove();
     });
     it('find should succeed if document is unmodified', async function() {
       return AuthenticatedFieldsModel.findById(
@@ -2364,9 +2338,7 @@ describe('Array EmbeddedDocument', function() {
         );
       });
       after(async function() {
-        return LessSecureModel.remove({}, function(err) {
-          done();
-        });
+        await LessSecureModel.remove();
       });
       it('should just work', async function() {
         return LessSecureModel.findById(
@@ -2630,9 +2602,7 @@ describe('Array EmbeddedDocument', function() {
           );
         });
         after(async function() {
-          return OriginalModel.remove({}, function(err) {
-            done();
-          });
+          await OriginalModel.remove();
         });
         it('should transform existing documents in collection such that they work with plugin version A', async function() {
           return MigrationModel.migrateToA(
@@ -2728,9 +2698,7 @@ describe('Array EmbeddedDocument', function() {
           );
         });
         after(async function() {
-          return PreviouslyUnencryptedModel.remove({}, function(err) {
-            done();
-          });
+          await PreviouslyUnencryptedModel.remove({});
         });
         it('should transform documents in an unencrypted collection such that they are signed and encrypted and work with plugin version A', async function() {
           return PreviouslyUnencryptedModel.migrateToA(
@@ -2891,9 +2859,7 @@ describe('Array EmbeddedDocument', function() {
           );
         });
         after(async function() {
-          return this.OriginalParentModel.remove({}, function(err) {
-            done();
-          });
+          await this.OriginalParentModel.remove();
         });
         it.skip('migration definitely needed', async function() {
           const doc = await this.OriginalParentModel.findById(this.docId);
@@ -2960,9 +2926,7 @@ describe('Array EmbeddedDocument', function() {
       );
     });
     after(async function() {
-      return UnsignedModel.remove({}, function(err) {
-        done();
-      });
+      await UnsignedModel.remove({});
     });
     it('should transform documents in an unsigned collection such that they are signed and work with plugin version A', async function() {
       return UnsignedModel.signAll(
