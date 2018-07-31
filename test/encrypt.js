@@ -1129,22 +1129,17 @@ describe('Array EmbeddedDocument', function() {
           assert.equal(this.parentDoc.children[0].text, undefined);
         });
         it('should persist children as encrypted', async function() {
-          return this.ParentModel.find(
-            {
-              _id: this.parentDoc._id,
-              'children._ct': {
-                $exists: true
-              },
-              'children.text': {
-                $exists: false
-              }
+          const docs = await this.ParentModel.find({
+            _id: this.parentDoc._id,
+            'children._ct': {
+              $exists: true
             },
-            function(err, docs) {
-              assert.lengthOf(docs, 1);
-              assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
-              done();
+            'children.text': {
+              $exists: false
             }
-          );
+          });
+          assert.lengthOf(docs, 1);
+          assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
         });
       });
       describe('document.find()', function() {
@@ -1194,7 +1189,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('and parent has encryptedChildren plugin', function() {
       before(function() {
-        ChildModelSchema = mongoose.Schema({
+        const ChildModelSchema = mongoose.Schema({
           text: {
             type: String
           }
@@ -1203,7 +1198,7 @@ describe('Array EmbeddedDocument', function() {
           encryptionKey,
           signingKey
         });
-        ParentModelSchema = mongoose.Schema({
+        const ParentModelSchema = mongoose.Schema({
           text: {
             type: String
           },
@@ -1217,10 +1212,10 @@ describe('Array EmbeddedDocument', function() {
         this.parentDoc = new this.ParentModel({
           text: 'Unencrypted text'
         });
-        childDoc = new this.ChildModel({
+        const childDoc = new this.ChildModel({
           text: 'Child unencrypted text'
         });
-        childDoc2 = new this.ChildModel({
+        const childDoc2 = new this.ChildModel({
           text: 'Second unencrypted text'
         });
         this.parentDoc.children.addToSet(childDoc);
@@ -1235,22 +1230,17 @@ describe('Array EmbeddedDocument', function() {
           assert.equal(this.parentDoc.children[0].text, 'Child unencrypted text');
         });
         it('should persist children as encrypted', async function() {
-          return this.ParentModel.find(
-            {
-              _id: this.parentDoc._id,
-              'children._ct': {
-                $exists: true
-              },
-              'children.text': {
-                $exists: false
-              }
+          const docs = await this.ParentModel.find({
+            _id: this.parentDoc._id,
+            'children._ct': {
+              $exists: true
             },
-            function(err, docs) {
-              assert.lengthOf(docs, 1);
-              assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
-              done();
+            'children.text': {
+              $exists: false
             }
-          );
+          });
+          assert.lengthOf(docs, 1);
+          assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
         });
       });
       describe('document.find()', function() {
@@ -1299,8 +1289,7 @@ describe('Array EmbeddedDocument', function() {
       });
       describe('when child is encrypted and authenticated', function() {
         before(function() {
-          let ChildModelSchema, ParentModelSchema;
-          ChildModelSchema = mongoose.Schema({
+          const ChildModelSchema = mongoose.Schema({
             text: {
               type: String
             }
@@ -1309,7 +1298,7 @@ describe('Array EmbeddedDocument', function() {
             encryptionKey,
             signingKey
           });
-          ParentModelSchema = mongoose.Schema({
+          const ParentModelSchema = mongoose.Schema({
             text: {
               type: String
             },
@@ -1325,14 +1314,13 @@ describe('Array EmbeddedDocument', function() {
           this.ChildModel = mongoose.model('ChildWithAuth', ChildModelSchema);
         });
         beforeEach(async function() {
-          let childDoc, childDoc2;
           this.parentDoc = new this.ParentModel({
             text: 'Unencrypted text'
           });
-          childDoc = new this.ChildModel({
+          const childDoc = new this.ChildModel({
             text: 'Child unencrypted text'
           });
-          childDoc2 = new this.ChildModel({
+          const childDoc2 = new this.ChildModel({
             text: 'Second unencrypted text'
           });
           this.parentDoc.children.addToSet(childDoc);
@@ -2950,8 +2938,7 @@ describe('Array EmbeddedDocument', function() {
   });
   describe('installing on schema alongside standard encrypt plugin', function() {
     it('should throw an error if installed after standard encrypt plugin', function() {
-      let EncryptedSchema;
-      EncryptedSchema = mongoose.Schema({
+      const EncryptedSchema = mongoose.Schema({
         text: {
           type: String
         }
@@ -2959,11 +2946,7 @@ describe('Array EmbeddedDocument', function() {
       EncryptedSchema.plugin(encrypt, {
         secret
       });
-      assert.throw(function() {
-        return EncryptedSchema.plugin(encrypt.migrations, {
-          secret
-        });
-      });
+      assert.throw(() => EncryptedSchema.plugin(encrypt.migrations, { secret }));
     });
     it('should cause encrypt plugin to throw an error if installed first', function() {
       let EncryptedSchema;
