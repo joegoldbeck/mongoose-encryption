@@ -35,20 +35,27 @@
     "semver": "^5.5.0",
     "underscore": "^1.5.0"
   },
-  "peerDependencies":{
+  "peerDependencies": {
     "mongoose": ">=5.0.0"
   },
   "devDependencies": {
-    "mocha": "^1.0.0",
-    "mongoose": ">=5.0.0",
     "chai": "^1.0.0",
     "coffeescript": "^1.7.0",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb": "^17.0.0",
+    "eslint-config-prettier": "^2.9.0",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-jsx-a11y": "^6.1.1",
+    "eslint-plugin-react": "^7.10.0",
+    "mocha": "^1.0.0",
+    "mongoose": ">=5.0.0",
     "sinon": "^1.10.3"
   },
   "engines": {
-    "node": ">=4.4.5"
+    "node": ">=8.0.0"
   },
   "scripts": {
+    "lint": "eslint ./lib",
     "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000"
   }
 }

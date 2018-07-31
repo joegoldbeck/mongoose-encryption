@@ -1,0 +1,12 @@
+  extends:
+    - airbnb
+    - prettier
+  parserOptions:
+    sourceType: script
+    impliedStrict: false
+  rules:
+    strict:
+      - error
+      - global
+    no-underscore-dangle: 0
+    no-plusplus: 0
