@@ -457,7 +457,7 @@ describe('document.save() when only certain fields are encrypted', function() {
     });
   });
   it('should not overwrite _ct or _ac when saved after a find that didnt retrieve _ct or _ac', async function() {
-    const doc = await this.PartiallyEncryptedModel.findById(this.partiallyEncryptedDoc).select(
+    const doc = await this.PartiallyEncryptedModel.findById(this.partiallyEncryptedDoc._id).select(
       'unencryptedText'
     );
 
@@ -471,9 +471,9 @@ describe('document.save() when only certain fields are encrypted', function() {
     );
     await doc.save();
 
-    const finalDoc = await this.PartiallyEncryptedModel.findById(this.partiallyEncryptedDoc).select(
-      'unencryptedText _ct _ac'
-    );
+    const finalDoc = await this.PartiallyEncryptedModel.findById(
+      this.partiallyEncryptedDoc._id
+    ).select('unencryptedText _ct _ac');
 
     assert.equal(finalDoc._ct, undefined);
     assert.propertyVal(
