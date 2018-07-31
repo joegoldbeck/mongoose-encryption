@@ -722,7 +722,6 @@ describe('document.encrypt()', function() {
     assert.propertyVal(simpleTestDoc5, 'idx', 'Indexed');
   });
   it('should have a field _ct containing a mongoose Buffer object which appears encrypted', function() {
-    assert.isObject(simpleTestDoc5._ct);
     assert.property(simpleTestDoc5.toObject()._ct, 'buffer');
     assert.instanceOf(simpleTestDoc5.toObject()._ct.buffer, Buffer);
     assert.isString(
