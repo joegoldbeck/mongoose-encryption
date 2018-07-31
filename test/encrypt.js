@@ -905,7 +905,7 @@ describe('document.decrypt()', function() {
 });
 
 describe('document.decryptSync()', function() {
-  const simpleTestDoc7 = null;
+  let simpleTestDoc7 = null;
   before(async function() {
     simpleTestDoc7 = new BasicEncryptedModel({
       text: 'Unencrypted text',
@@ -1178,8 +1178,7 @@ describe('Array EmbeddedDocument', function() {
   describe('when only child is encrypted', function() {
     describe('and parent does not have encryptedChildren plugin', function() {
       before(function() {
-        var ChildModelSchema, ParentModelSchema;
-        ChildModelSchema = mongoose.Schema({
+        const ChildModelSchema = mongoose.Schema({
           text: {
             type: String
           }
@@ -1188,32 +1187,31 @@ describe('Array EmbeddedDocument', function() {
           encryptionKey,
           signingKey
         });
-        ParentModelSchema = mongoose.Schema({
+        const ParentModelSchema = mongoose.Schema({
           text: {
             type: String
           },
           children: [ChildModelSchema]
         });
         this.ParentModel = mongoose.model('Parent', ParentModelSchema);
-        return (this.ChildModel = mongoose.model('Child', ChildModelSchema));
+        this.ChildModel = mongoose.model('Child', ChildModelSchema);
       });
       beforeEach(async function() {
-        var childDoc, childDoc2;
         this.parentDoc = new this.ParentModel({
           text: 'Unencrypted text'
         });
-        childDoc = new this.ChildModel({
+        const childDoc = new this.ChildModel({
           text: 'Child unencrypted text'
         });
-        childDoc2 = new this.ChildModel({
+        const childDoc2 = new this.ChildModel({
           text: 'Second unencrypted text'
         });
         this.parentDoc.children.addToSet(childDoc);
         this.parentDoc.children.addToSet(childDoc2);
-        return this.parentDoc.save(done);
+        await this.parentDoc.save();
       });
       after(async function() {
-        return this.parentDoc.remove(done);
+        await this.parentDoc.remove();
       });
       describe('document.save()', function() {
         it('should not have decrypted fields', function() {
@@ -1333,10 +1331,10 @@ describe('Array EmbeddedDocument', function() {
         });
         this.parentDoc.children.addToSet(childDoc);
         this.parentDoc.children.addToSet(childDoc2);
-        return this.parentDoc.save(done);
+        await this.parentDoc.save();
       });
       after(async function() {
-        return this.parentDoc.remove(done);
+        await this.parentDoc.remove();
       });
       describe('document.save()', function() {
         it('should have decrypted fields', function() {
@@ -1461,10 +1459,10 @@ describe('Array EmbeddedDocument', function() {
         });
         this.parentDoc.children.addToSet(childDoc);
         this.parentDoc.children.addToSet(childDoc2);
-        return this.parentDoc.save(done);
+        await this.parentDoc.save();
       });
       after(async function() {
-        return this.parentDoc.remove(done);
+        await this.parentDoc.remove();
       });
       it('should persist children as encrypted after removing a child', async function() {
         return this.ParentModel.findById(
@@ -1575,10 +1573,10 @@ describe('Array EmbeddedDocument', function() {
       });
       this.parentDoc.children.addToSet(childDoc);
       this.parentDoc.children.addToSet(childDoc2);
-      return this.parentDoc.save(done);
+      await this.parentDoc.save();
     });
     after(async function() {
-      return this.parentDoc.remove(done);
+      await this.parentDoc.remove();
     });
     describe('document.save()', function() {
       it('should have decrypted fields on parent', function() {
@@ -1685,10 +1683,10 @@ describe('Array EmbeddedDocument', function() {
           }
         ]
       });
-      return this.parentDoc.save(done);
+      await this.parentDoc.save();
     });
     after(async function() {
-      return this.parentDoc.remove(done);
+      await this.parentDoc.remove();
     });
     describe('document.save()', function() {
       it('should have decrypted fields in document passed to call back', function() {
