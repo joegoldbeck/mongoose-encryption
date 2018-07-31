@@ -999,8 +999,7 @@ describe('"encryptedFields" option', function() {
 
 describe('"excludeFromEncryption" option', function() {
   it('should encrypt all non-indexed fields except those in the passed-in "excludeFromEncryption" array', async function() {
-    var ExcludeEncryptedModel, ExcludeEncryptedModelSchema, excludeEncryptedDoc;
-    ExcludeEncryptedModelSchema = mongoose.Schema({
+    const ExcludeEncryptedModelSchema = mongoose.Schema({
       text: {
         type: String
       },
@@ -1021,26 +1020,23 @@ describe('"excludeFromEncryption" option', function() {
       collectionId: 'ExcludeEncrypted',
       excludeFromEncryption: ['num']
     });
-    ExcludeEncryptedModel = mongoose.model('Exclude', ExcludeEncryptedModelSchema);
-    excludeEncryptedDoc = new ExcludeEncryptedModel({
+    const ExcludeEncryptedModel = mongoose.model('Exclude', ExcludeEncryptedModelSchema);
+    const excludeEncryptedDoc = new ExcludeEncryptedModel({
       text: 'Unencrypted text',
       bool: false,
       num: 43,
       idx: 'Indexed'
     });
-    return excludeEncryptedDoc.encrypt(function(err) {
-      assert.equal(excludeEncryptedDoc.text, undefined);
-      assert.equal(excludeEncryptedDoc.bool, undefined);
-      assert.propertyVal(excludeEncryptedDoc, 'num', 43);
-      assert.propertyVal(excludeEncryptedDoc, 'idx', 'Indexed');
-      return excludeEncryptedDoc.decrypt(function(err) {
-        assert.equal(excludeEncryptedDoc.text, 'Unencrypted text');
-        assert.equal(excludeEncryptedDoc.bool, false);
-        assert.propertyVal(excludeEncryptedDoc, 'num', 43);
-        assert.propertyVal(excludeEncryptedDoc, 'idx', 'Indexed');
-        done();
-      });
-    });
+    await excludeEncryptedDoc.encrypt();
+    assert.equal(excludeEncryptedDoc.text, undefined);
+    assert.equal(excludeEncryptedDoc.bool, undefined);
+    assert.propertyVal(excludeEncryptedDoc, 'num', 43);
+    assert.propertyVal(excludeEncryptedDoc, 'idx', 'Indexed');
+    await excludeEncryptedDoc.decrypt();
+    assert.equal(excludeEncryptedDoc.text, 'Unencrypted text');
+    assert.equal(excludeEncryptedDoc.bool, false);
+    assert.propertyVal(excludeEncryptedDoc, 'num', 43);
+    assert.propertyVal(excludeEncryptedDoc, 'idx', 'Indexed');
   });
 });
 
@@ -1057,14 +1053,13 @@ describe('"decryptPostSave" option', function() {
     });
     this.HighPerformanceModel = mongoose.model('HighPerformance', HighPerformanceModelSchema);
   });
-  beforeEach(async function() {
+  beforeEach(function() {
     this.doc = new this.HighPerformanceModel({
       text: 'Unencrypted text'
     });
-    done();
   });
   afterEach(async function() {
-    return this.HighPerformanceModel.remove();
+    await this.HighPerformanceModel.remove();
   });
   it('saves encrypted fields correctly', async function() {
     return this.doc.save(
@@ -1091,20 +1086,12 @@ describe('"decryptPostSave" option', function() {
     );
   });
   it('returns encrypted data after save', async function() {
-    return this.doc.save(function(err, savedDoc) {
-      assert.property(savedDoc, '_ct', 'Document remains encrypted after save');
-      assert.notProperty(savedDoc.toObject(), 'text');
-      return savedDoc.decrypt(function(err) {
-        assert.notProperty(savedDoc.toObject(), '_ct');
-        assert.propertyVal(
-          savedDoc,
-          'text',
-          'Unencrypted text',
-          'Document can still be unencrypted'
-        );
-        done();
-      });
-    });
+    const savedDoc = await this.doc.save();
+    assert.property(savedDoc, '_ct', 'Document remains encrypted after save');
+    assert.notProperty(savedDoc.toObject(), 'text');
+    await savedDoc.decrypt();
+    assert.notProperty(savedDoc.toObject(), '_ct');
+    assert.propertyVal(savedDoc, 'text', 'Unencrypted text', 'Document can still be unencrypted');
   });
 });
 
@@ -1217,7 +1204,6 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('and parent has encryptedChildren plugin', function() {
       before(function() {
-        var ChildModelSchema, ParentModelSchema;
         ChildModelSchema = mongoose.Schema({
           text: {
             type: String
@@ -1238,7 +1224,6 @@ describe('Array EmbeddedDocument', function() {
         this.ChildModel = mongoose.model('ChildOfECP', ChildModelSchema);
       });
       beforeEach(async function() {
-        var childDoc, childDoc2;
         this.parentDoc = new this.ParentModel({
           text: 'Unencrypted text'
         });
@@ -1324,7 +1309,7 @@ describe('Array EmbeddedDocument', function() {
       });
       describe('when child is encrypted and authenticated', function() {
         before(function() {
-          var ChildModelSchema, ParentModelSchema;
+          let ChildModelSchema, ParentModelSchema;
           ChildModelSchema = mongoose.Schema({
             text: {
               type: String
@@ -1350,7 +1335,7 @@ describe('Array EmbeddedDocument', function() {
           this.ChildModel = mongoose.model('ChildWithAuth', ChildModelSchema);
         });
         beforeEach(async function() {
-          var childDoc, childDoc2;
+          let childDoc, childDoc2;
           this.parentDoc = new this.ParentModel({
             text: 'Unencrypted text'
           });
@@ -1438,7 +1423,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('when child and parent are encrypted', function() {
       before(function() {
-        var ChildModelSchema, ParentModelSchema;
+        let ChildModelSchema, ParentModelSchema;
         ChildModelSchema = mongoose.Schema({
           text: {
             type: String
@@ -1464,7 +1449,7 @@ describe('Array EmbeddedDocument', function() {
         this.ChildModel = mongoose.model('ChildBoth', ChildModelSchema);
       });
       beforeEach(async function() {
-        var childDoc, childDoc2;
+        let childDoc, childDoc2;
         this.parentDoc = new this.ParentModel({
           text: 'Unencrypted text'
         });
@@ -1544,7 +1529,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('when entire parent is encrypted', function() {
       before(function() {
-        var ParentModelSchema;
+        let ParentModelSchema;
         ParentModelSchema = mongoose.Schema({
           text: {
             type: String
@@ -1619,7 +1604,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('Encrypted embedded document when parent has validation error and doesnt have encryptedChildren plugin', function() {
       before(function() {
-        var ChildModelSchema, ParentModelSchema;
+        let ChildModelSchema, ParentModelSchema;
         ChildModelSchema = mongoose.Schema({
           text: {
             type: String
@@ -1644,7 +1629,7 @@ describe('Array EmbeddedDocument', function() {
         this.ChildModel2 = mongoose.model('ChildAgain', ChildModelSchema);
       });
       it('should return unencrypted embedded documents', async function() {
-        var doc;
+        let doc;
         doc = new this.ParentModel2({
           text: 'here it is',
           children: [
@@ -1666,7 +1651,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('Encrypted embedded document when parent has validation error and has encryptedChildren plugin', function() {
       before(function() {
-        var ChildModelSchema;
+        let ChildModelSchema;
         ChildModelSchema = mongoose.Schema({
           text: {
             type: String
@@ -1698,7 +1683,7 @@ describe('Array EmbeddedDocument', function() {
         return this.sandbox.restore();
       });
       it('should return unencrypted embedded documents', async function() {
-        var doc;
+        let doc;
         doc = new this.ParentModel2({
           text: 'here it is',
           children: [
@@ -1720,7 +1705,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('Encrypted embedded document when parent has both encrypt and encryptedChildren plugins', function() {
       before(function() {
-        var ChildModelSchema, ParentModelSchema;
+        let ChildModelSchema, ParentModelSchema;
         ChildModelSchema = mongoose.Schema({
           text: {
             type: String
@@ -1766,7 +1751,7 @@ describe('Array EmbeddedDocument', function() {
               return this.invalidDoc.invalidate('text', 'invalid', this.text);
             });
             it('should return unencrypted parent and embedded documents', async function() {
-              var doc;
+              let doc;
               doc = this.invalidDoc;
               return this.invalidDoc.save(function(err) {
                 assert.ok(err, 'There should be a validation error');
@@ -1787,7 +1772,7 @@ describe('Array EmbeddedDocument', function() {
         (function(_this) {
           return function() {
             it('should return unencrypted parent and embedded documents', async function() {
-              var doc;
+              let doc;
               doc = new this.ParentModel2({
                 text: 'here it is',
                 encryptedText: 'here is more',
@@ -1964,7 +1949,7 @@ describe('Array EmbeddedDocument', function() {
       );
     });
     it('should throw error if _ac has been modified to have authenticated fields = []', function() {
-      var acWithoutAFLength, bareBuffer, blankArrayBuffer;
+      let acWithoutAFLength, bareBuffer, blankArrayBuffer;
       acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH;
       blankArrayBuffer = Buffer.from(JSON.stringify([]));
       bareBuffer = Buffer.from(acWithoutAFLength);
@@ -1979,7 +1964,7 @@ describe('Array EmbeddedDocument', function() {
       );
     });
     it('should throw error if _ac has been modified to have no authenticated fields section', function() {
-      var acWithoutAFLength, poisonBuffer;
+      let acWithoutAFLength, poisonBuffer;
       acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH;
       poisonBuffer = Buffer.from(acWithoutAFLength);
       poisonBuffer.copy(this.testDocAS._ac, 0, 0, acWithoutAFLength);
@@ -2120,7 +2105,7 @@ describe('Array EmbeddedDocument', function() {
       return this.testDocA.remove();
     });
     it('should pass error if _ac has been modified to have authenticated fields = []', async function() {
-      var acWithoutAFLength, bareBuffer, blankArrayBuffer;
+      let acWithoutAFLength, bareBuffer, blankArrayBuffer;
       acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH;
       blankArrayBuffer = Buffer.from(JSON.stringify([]));
       bareBuffer = Buffer.from(acWithoutAFLength);
@@ -2133,7 +2118,7 @@ describe('Array EmbeddedDocument', function() {
       });
     });
     it('should pass error if _ac has been modified to have no authenticated fields section', async function() {
-      var acWithoutAFLength, poisonBuffer;
+      let acWithoutAFLength, poisonBuffer;
       acWithoutAFLength = encrypt.AAC_LENGTH + encrypt.VERSION_LENGTH;
       poisonBuffer = Buffer.from(acWithoutAFLength);
       poisonBuffer.copy(this.testDocA._ac, 0, 0, acWithoutAFLength);
@@ -2203,7 +2188,7 @@ describe('Array EmbeddedDocument', function() {
         .exec(
           (function(_this) {
             return function(err, doc2) {
-              var ctForSwap;
+              let ctForSwap;
 
               ctForSwap = doc2._ct.buffer;
               return BasicEncryptedModel.update(
@@ -2216,7 +2201,7 @@ describe('Array EmbeddedDocument', function() {
                   }
                 }
               ).exec(function(err, raw) {
-                var n;
+                let n;
                 n = raw.n || raw;
 
                 assert.equal(n, 1);
@@ -2234,7 +2219,7 @@ describe('Array EmbeddedDocument', function() {
   });
 
   describe('additionalAuthenticatedFields option', function() {
-    var AuthenticatedFieldsModel, AuthenticatedFieldsModelSchema;
+    let AuthenticatedFieldsModel, AuthenticatedFieldsModelSchema;
     AuthenticatedFieldsModelSchema = mongoose.Schema({
       text: {
         type: String
@@ -2294,7 +2279,7 @@ describe('Array EmbeddedDocument', function() {
       ).exec(
         (function(_this) {
           return function(err, raw) {
-            var n;
+            let n;
             n = raw.n || raw;
 
             assert.equal(n, 1);
@@ -2319,7 +2304,7 @@ describe('Array EmbeddedDocument', function() {
       ).exec(
         (function(_this) {
           return function(err, raw) {
-            var n;
+            let n;
             n = raw.n || raw;
 
             assert.equal(n, 1);
@@ -2336,7 +2321,7 @@ describe('Array EmbeddedDocument', function() {
 
   describe('"requireAuthenticationCode" option', function() {
     describe('set to false and plugin used with existing collection without a migration', function() {
-      var LessSecureModel, LessSecureSchema;
+      let LessSecureModel, LessSecureSchema;
       LessSecureSchema = mongoose.Schema({
         text: {
           type: String
@@ -2355,7 +2340,7 @@ describe('Array EmbeddedDocument', function() {
       });
       LessSecureModel = mongoose.model('LessSecure', LessSecureSchema);
       before(async function() {
-        var plainDoc, plainDoc2;
+        let plainDoc, plainDoc2;
         plainDoc = {
           text: 'Plain',
           bool: true
@@ -2368,7 +2353,7 @@ describe('Array EmbeddedDocument', function() {
           [plainDoc, plainDoc2],
           (function(_this) {
             return function(err, raw) {
-              var docs;
+              let docs;
 
               docs = raw.ops || raw;
               this.docId = docs[0]._id;
@@ -2419,7 +2404,7 @@ describe('Array EmbeddedDocument', function() {
 
   describe('period in field name in options', function() {
     it('should encrypt nested fields with dot notation', async function() {
-      var NestedModel, NestedModelSchema, nestedDoc;
+      let NestedModel, NestedModelSchema, nestedDoc;
       NestedModelSchema = mongoose.Schema({
         nest: {
           secretBird: {
@@ -2448,20 +2433,17 @@ describe('Array EmbeddedDocument', function() {
           publicBird: 'Unencrypted text 3'
         }
       });
-      return nestedDoc.encrypt(function(err) {
-        assert.equal(nestedDoc.nest.secretBird, undefined);
-        assert.equal(nestedDoc.nest.secretBird2, undefined);
-        assert.equal(nestedDoc.nest.publicBird, 'Unencrypted text 3');
-        return nestedDoc.decrypt(function(err) {
-          assert.equal(nestedDoc.nest.secretBird, 'Unencrypted text');
-          assert.equal(nestedDoc.nest.secretBird2, 'Unencrypted text 2');
-          assert.equal(nestedDoc.nest.publicBird, 'Unencrypted text 3');
-          done();
-        });
-      });
+      await nestedDoc.encrypt();
+      assert.equal(nestedDoc.nest.secretBird, undefined);
+      assert.equal(nestedDoc.nest.secretBird2, undefined);
+      assert.equal(nestedDoc.nest.publicBird, 'Unencrypted text 3');
+      await nestedDoc.decrypt();
+      assert.equal(nestedDoc.nest.secretBird, 'Unencrypted text');
+      assert.equal(nestedDoc.nest.secretBird2, 'Unencrypted text 2');
+      assert.equal(nestedDoc.nest.publicBird, 'Unencrypted text 3');
     });
     it('should encrypt nested fields with dot notation two layers deep', async function() {
-      var NestedModel, NestedModelSchema, nestedDoc;
+      let NestedModel, NestedModelSchema, nestedDoc;
       NestedModelSchema = mongoose.Schema({
         nest: {
           secretBird: {
@@ -2485,18 +2467,15 @@ describe('Array EmbeddedDocument', function() {
           }
         }
       });
-      return nestedDoc.encrypt(function(err) {
-        assert.equal(nestedDoc.nest.secretBird.topSecretEgg, undefined);
-        return nestedDoc.decrypt(function(err) {
-          assert.equal(nestedDoc.nest.secretBird.topSecretEgg, 'Unencrypted text');
-          done();
-        });
-      });
+      await nestedDoc.encrypt();
+      assert.equal(nestedDoc.nest.secretBird.topSecretEgg, undefined);
+      await nestedDoc.decrypt();
+      assert.equal(nestedDoc.nest.secretBird.topSecretEgg, 'Unencrypted text');
     });
   });
 
   describe('saving same authenticated document twice asynchronously', function() {
-    var TwoFieldAuthModel, TwoFieldAuthSchema;
+    let TwoFieldAuthModel, TwoFieldAuthSchema;
     TwoFieldAuthModel = null;
     TwoFieldAuthSchema = mongoose.Schema({
       text: {
@@ -2559,7 +2538,7 @@ describe('Array EmbeddedDocument', function() {
   describe('migrations', function() {
     describe('migrateToA static model method', function() {
       describe('on collection encrypted with previous version', function() {
-        var MigrationModel, MigrationSchema, OriginalModel, OriginalSchema, OriginalSchemaObject;
+        let MigrationModel, MigrationSchema, OriginalModel, OriginalSchema, OriginalSchemaObject;
         OriginalSchemaObject = {
           text: {
             type: String
@@ -2611,7 +2590,7 @@ describe('Array EmbeddedDocument', function() {
         });
         MigrationModel = mongoose.model('Migrate', MigrationSchema, 'olds');
         before(async function() {
-          var bufferEncryptedWithOldVersion,
+          let bufferEncryptedWithOldVersion,
             bufferEncryptedWithOldVersion2,
             docEncryptedWithOldVersion,
             docEncryptedWithOldVersion2;
@@ -2636,7 +2615,7 @@ describe('Array EmbeddedDocument', function() {
             [docEncryptedWithOldVersion, docEncryptedWithOldVersion2],
             (function(_this) {
               return function(err, raw) {
-                var docs;
+                let docs;
 
                 docs = raw.ops || raw;
                 this.docId = docs[0]._id;
@@ -2706,7 +2685,7 @@ describe('Array EmbeddedDocument', function() {
         });
       });
       describe('on previously unencrypted collection', function() {
-        var PreviouslyUnencryptedModel, PreviouslyUnencryptedSchema, schemaObject;
+        let PreviouslyUnencryptedModel, PreviouslyUnencryptedSchema, schemaObject;
         schemaObject = {
           text: {
             type: String
@@ -2725,7 +2704,7 @@ describe('Array EmbeddedDocument', function() {
         });
         PreviouslyUnencryptedModel = mongoose.model('FormerlyPlain', PreviouslyUnencryptedSchema);
         before(async function() {
-          var plainDoc, plainDoc2;
+          let plainDoc, plainDoc2;
           plainDoc = {
             text: 'Plain',
             bool: true
@@ -2738,7 +2717,7 @@ describe('Array EmbeddedDocument', function() {
             [plainDoc, plainDoc2],
             (function(_this) {
               return function(err, raw) {
-                var docs;
+                let docs;
 
                 docs = raw.ops || raw;
                 this.docId = docs[0]._id;
@@ -2757,7 +2736,7 @@ describe('Array EmbeddedDocument', function() {
           return PreviouslyUnencryptedModel.migrateToA(
             (function(_this) {
               return function(err) {
-                var PreviouslyUnencryptedModelMigrated, PreviouslyUnencryptedSchemaMigrated;
+                let PreviouslyUnencryptedModelMigrated, PreviouslyUnencryptedSchemaMigrated;
 
                 PreviouslyUnencryptedSchemaMigrated = mongoose.Schema(schemaObject);
                 PreviouslyUnencryptedSchemaMigrated.plugin(encrypt, {
@@ -2827,7 +2806,7 @@ describe('Array EmbeddedDocument', function() {
     describe('migrateSubDocsToA static model method', function() {
       describe('on collection where subdocs encrypted with previous version', function() {
         before(async function() {
-          var MigrationChildSchema,
+          let MigrationChildSchema,
             MigrationParentSchema,
             OriginalChildSchema,
             OriginalParentSchema,
@@ -2902,7 +2881,7 @@ describe('Array EmbeddedDocument', function() {
             [docWithChildrenFromOldVersion],
             (function(_this) {
               return function(err, raw) {
-                var docs;
+                let docs;
 
                 docs = raw.ops || raw;
                 this.docId = docs[0]._id;
@@ -2938,7 +2917,7 @@ describe('Array EmbeddedDocument', function() {
     });
   });
   describe('signAll static model method', function() {
-    var UnsignedModel, UnsignedSchema, schemaObject;
+    let UnsignedModel, UnsignedSchema, schemaObject;
     schemaObject = {
       text: {
         type: String
@@ -2957,7 +2936,7 @@ describe('Array EmbeddedDocument', function() {
     });
     UnsignedModel = mongoose.model('Sign', UnsignedSchema);
     before(async function() {
-      var plainDoc, plainDoc2;
+      let plainDoc, plainDoc2;
       plainDoc = {
         text: 'Plain',
         bool: true
@@ -2970,7 +2949,7 @@ describe('Array EmbeddedDocument', function() {
         [plainDoc, plainDoc2],
         (function(_this) {
           return function(err, raw) {
-            var docs;
+            let docs;
 
             docs = raw.ops || raw;
             this.docId = docs[0]._id;
@@ -3007,7 +2986,7 @@ describe('Array EmbeddedDocument', function() {
   });
   describe('installing on schema alongside standard encrypt plugin', function() {
     it('should throw an error if installed after standard encrypt plugin', function() {
-      var EncryptedSchema;
+      let EncryptedSchema;
       EncryptedSchema = mongoose.Schema({
         text: {
           type: String
@@ -3023,7 +3002,7 @@ describe('Array EmbeddedDocument', function() {
       });
     });
     it('should cause encrypt plugin to throw an error if installed first', function() {
-      var EncryptedSchema;
+      let EncryptedSchema;
       EncryptedSchema = mongoose.Schema({
         text: {
           type: String
