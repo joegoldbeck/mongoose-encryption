@@ -161,7 +161,7 @@ describe('new EncryptedModel', function() {
       },
       buf: Buffer.from('abcdefg')
     });
-    console.log(simpleTestDoc1); // FIXME remove
+
     assert.propertyVal(simpleTestDoc1, 'text', 'Unencrypted text');
     assert.propertyVal(simpleTestDoc1, 'bool', true);
     assert.propertyVal(simpleTestDoc1, 'num', 42);
@@ -179,7 +179,7 @@ describe('new EncryptedModel', function() {
     assert.property(simpleTestDoc1, 'buf');
     assert.equal(simpleTestDoc1.buf.toString(), 'abcdefg');
     assert.property(simpleTestDoc1, '_id');
-    assert.notProperty(simpleTestDoc1, '_ct');
+    assert.notProperty(simpleTestDoc1.toObject(), '_ct');
   });
 });
 
@@ -525,7 +525,7 @@ describe('EncryptedModel.create()', function() {
     assert.property(doc, 'buf');
     assert.equal(doc.buf.toString(), 'abcdefg');
     assert.property(doc, '_id');
-    assert.notProperty(doc, '_ct');
+    assert.notProperty(doc.toObject(), '_ct');
   });
   it('after doc created, should be encrypted in db', async function() {
     const doc = await BasicEncryptedModel.create(this.docContents);
@@ -612,7 +612,7 @@ describe('EncryptedModel.find()', function() {
     assert.property(doc, 'buf');
     assert.equal(doc.buf.toString(), 'abcdefg');
     assert.property(doc, '_id');
-    assert.notProperty(doc, '_ct');
+    assert.notProperty(doc.toObject(), '_ct');
   });
   it('when doc not found by id, should pass null to the callback', async function() {
     assert.equal(await BasicEncryptedModel.findById('534ec48d60069bc13338b354', null));
@@ -833,7 +833,7 @@ describe('document.decrypt()', function() {
           assert.equal(this.encryptedSimpleTestDoc.buf.toString(), 'abcdefg');
           assert.propertyVal(this.encryptedSimpleTestDoc, 'idx', 'Indexed');
           assert.property(this.encryptedSimpleTestDoc, '_id');
-          assert.notProperty(this.encryptedSimpleTestDoc, '_ct');
+          assert.notProperty(this.encryptedSimpleTestDoc.toObject(), '_ct');
           done();
         };
       })(this)
@@ -864,7 +864,7 @@ describe('document.decrypt()', function() {
           assert.equal(this.simpleTestDoc6.buf.toString(), 'abcdefg');
           assert.propertyVal(this.simpleTestDoc6, 'idx', 'Indexed');
           assert.property(this.simpleTestDoc6, '_id');
-          assert.notProperty(this.simpleTestDoc6, '_ct');
+          assert.notProperty(this.simpleTestDoc6.toObject(), '_ct');
           done();
         };
       })(this)
@@ -896,7 +896,7 @@ describe('document.decrypt()', function() {
             assert.equal(this.encryptedSimpleTestDoc.buf.toString(), 'abcdefg');
             assert.propertyVal(this.encryptedSimpleTestDoc, 'idx', 'Indexed');
             assert.property(this.encryptedSimpleTestDoc, '_id');
-            assert.notProperty(this.encryptedSimpleTestDoc, '_ct');
+            assert.notProperty(this.encryptedSimpleTestDoc.toObject(), '_ct');
             done();
           });
         };
@@ -949,7 +949,7 @@ describe('document.decryptSync()', function() {
     assert.equal(simpleTestDoc7.buf.toString(), 'abcdefg');
     assert.propertyVal(simpleTestDoc7, 'idx', 'Indexed');
     assert.property(simpleTestDoc7, '_id');
-    assert.notProperty(simpleTestDoc7, '_ct');
+    assert.notProperty(simpleTestDoc7.toObject(), '_ct');
     done();
   });
   it('should return an unencrypted version even if document already decrypted', async function() {
@@ -972,7 +972,7 @@ describe('document.decryptSync()', function() {
     assert.equal(simpleTestDoc7.buf.toString(), 'abcdefg');
     assert.propertyVal(simpleTestDoc7, 'idx', 'Indexed');
     assert.property(simpleTestDoc7, '_id');
-    assert.notProperty(simpleTestDoc7, '_ct');
+    assert.notProperty(simpleTestDoc7.toObject(), '_ct');
     done();
   });
 });
@@ -1160,9 +1160,9 @@ describe('"decryptPostSave" option', function() {
   it('returns encrypted data after save', async function() {
     return this.doc.save(function(err, savedDoc) {
       assert.property(savedDoc, '_ct', 'Document remains encrypted after save');
-      assert.notProperty(savedDoc, 'text');
+      assert.notProperty(savedDoc.toObject(), 'text');
       return savedDoc.decrypt(function(err) {
-        assert.notProperty(savedDoc, '_ct');
+        assert.notProperty(savedDoc.toObject(), '_ct');
         assert.propertyVal(
           savedDoc,
           'text',
@@ -1247,7 +1247,7 @@ describe('Array EmbeddedDocument', function() {
             assert.isObject(doc.children[0]);
             assert.property(doc.children[0], 'text', 'Child unencrypted text');
             assert.property(doc.children[0], '_id');
-            assert.notProperty(doc.children[0], '_ct');
+            assert.notProperty(doc.toObject().children[0], '_ct');
             done();
           });
         });
@@ -1370,7 +1370,7 @@ describe('Array EmbeddedDocument', function() {
             assert.isObject(doc.children[0]);
             assert.property(doc.children[0], 'text', 'Child unencrypted text');
             assert.property(doc.children[0], '_id');
-            assert.notProperty(doc.children[0], '_ct');
+            assert.notProperty(doc.toObject().children[0], '_ct');
             done();
           });
         });
@@ -1615,7 +1615,7 @@ describe('Array EmbeddedDocument', function() {
           assert.isObject(doc.children[0]);
           assert.property(doc.children[0], 'text', 'Child unencrypted text');
           assert.property(doc.children[0], '_id');
-          assert.notProperty(doc.children[0], '_ct');
+          assert.notProperty(doc.toObject().children[0], '_ct');
           done();
         });
       });
@@ -1727,7 +1727,7 @@ describe('Array EmbeddedDocument', function() {
           assert.isObject(doc.children[0]);
           assert.property(doc.children[0], 'text', 'Child unencrypted text');
           assert.property(doc.children[0], '_id');
-          assert.notProperty(doc.children[0], '_ct');
+          assert.notProperty(doc.toObject().children[0], '_ct');
           done();
         });
       });
@@ -1774,7 +1774,7 @@ describe('Array EmbeddedDocument', function() {
         assert.propertyVal(doc, 'text', 'here it is');
         assert.isArray(doc.children);
         assert.property(doc.children[0], '_id');
-        assert.notProperty(doc.children[0], '_ct');
+        assert.notProperty(doc.toObject().children[0], '_ct');
         assert.property(doc.children[0], 'text', 'Child unencrypted text');
         done();
       });
@@ -1828,7 +1828,7 @@ describe('Array EmbeddedDocument', function() {
         assert.propertyVal(doc, 'text', 'here it is');
         assert.isArray(doc.children);
         assert.property(doc.children[0], '_id');
-        assert.notProperty(doc.children[0], '_ct');
+        assert.notProperty(doc.toObject().children[0], '_ct');
         assert.property(doc.children[0], 'text', 'Child unencrypted text');
         done();
       });
@@ -1890,7 +1890,7 @@ describe('Array EmbeddedDocument', function() {
               assert.propertyVal(doc, 'encryptedText', 'here is more');
               assert.isArray(doc.children);
               assert.property(doc.children[0], '_id');
-              assert.notProperty(doc.children[0], '_ct');
+              assert.notProperty(doc.toObject().children[0], '_ct');
               assert.property(doc.children[0], 'text', 'Child unencrypted text');
               done();
             });
@@ -1917,7 +1917,7 @@ describe('Array EmbeddedDocument', function() {
               assert.propertyVal(doc, 'text', 'here it is');
               assert.isArray(doc.children);
               assert.property(doc.children[0], '_id');
-              assert.notProperty(doc.children[0], '_ct');
+              assert.notProperty(doc.toObject().children[0], '_ct');
               assert.property(doc.children[0], 'text', 'Child unencrypted text');
               done();
             });
@@ -2509,11 +2509,11 @@ describe('"requireAuthenticationCode" option', function() {
                 .lean()
                 .exec(function(err, rawDoc1) {
                   assert.notProperty(
-                    rawDoc1,
+                    rawDoc1.toObject(),
                     'text',
                     'raw in db shouldnt show encrypted properties'
                   );
-                  assert.notProperty(rawDoc1, 'bool');
+                  assert.notProperty(rawDoc1.toObject(), 'bool');
                   assert.property(rawDoc1, '_ct', 'raw in db should have ciphertext');
                   assert.property(rawDoc1, '_ac', 'raw in db should have authentication code');
                   return LessSecureModel.findById(this.docId, function(err, unmigratedDoc1) {
@@ -2794,8 +2794,8 @@ describe('migrations', function() {
                 assert.property(migratedDoc1, 'buf');
                 assert.equal(migratedDoc1.buf.toString(), 'abcdefg');
                 assert.property(migratedDoc1, '_id');
-                assert.notProperty(migratedDoc1, '_ct');
-                assert.notProperty(migratedDoc1, '_ac');
+                assert.notProperty(migratedDoc1.toObject(), '_ct');
+                assert.notProperty(migratedDoc1.toObject(), '_ac');
                 return OriginalModel.findById(this.doc2Id, function(err, migratedDoc2) {
                   assert.equal(
                     err,
@@ -2884,11 +2884,11 @@ describe('migrations', function() {
                 .lean()
                 .exec(function(err, migratedDoc) {
                   assert.notProperty(
-                    migratedDoc,
+                    migratedDoc.toObject(),
                     'text',
                     'Should be encrypted in db after migration'
                   );
-                  assert.notProperty(migratedDoc, 'bool');
+                  assert.notProperty(migratedDoc.toObject(), 'bool');
                   assert.property(migratedDoc, '_ac');
                   assert.property(
                     migratedDoc,
@@ -2911,11 +2911,11 @@ describe('migrations', function() {
                         .lean()
                         .exec(function(err, migratedDoc) {
                           assert.notProperty(
-                            migratedDoc,
+                            migratedDoc.toObject(),
                             'text',
                             'Should be encrypted in raw db after saved'
                           );
-                          assert.notProperty(migratedDoc, 'bool');
+                          assert.notProperty(migratedDoc.toObject(), 'bool');
                           assert.property(migratedDoc, '_ac');
                           assert.property(
                             migratedDoc,
