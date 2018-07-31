@@ -55,7 +55,7 @@
     "node": ">=8.0.0"
   },
   "scripts": {
-    "lint": "eslint ./lib",
+    "lint": "eslint .",
     "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000"
   }
 }
