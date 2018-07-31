@@ -1400,8 +1400,7 @@ describe('Array EmbeddedDocument', function() {
     });
     describe('when child and parent are encrypted', function() {
       before(function() {
-        let ChildModelSchema, ParentModelSchema;
-        ChildModelSchema = mongoose.Schema({
+        const ChildModelSchema = mongoose.Schema({
           text: {
             type: String
           }
@@ -1410,7 +1409,7 @@ describe('Array EmbeddedDocument', function() {
           encryptionKey,
           signingKey
         });
-        ParentModelSchema = mongoose.Schema({
+        const ParentModelSchema = mongoose.Schema({
           text: {
             type: String
           },
@@ -1426,14 +1425,13 @@ describe('Array EmbeddedDocument', function() {
         this.ChildModel = mongoose.model('ChildBoth', ChildModelSchema);
       });
       beforeEach(async function() {
-        let childDoc, childDoc2;
         this.parentDoc = new this.ParentModel({
           text: 'Unencrypted text'
         });
-        childDoc = new this.ChildModel({
+        const childDoc = new this.ChildModel({
           text: 'Child unencrypted text'
         });
-        childDoc2 = new this.ChildModel({
+        const childDoc2 = new this.ChildModel({
           text: 'Second unencrypted text'
         });
         this.parentDoc.children.addToSet(childDoc);
@@ -1451,22 +1449,17 @@ describe('Array EmbeddedDocument', function() {
           assert.equal(this.parentDoc.children[0].text, 'Child unencrypted text');
         });
         it('should persist children as encrypted', async function() {
-          return this.ParentModel.find(
-            {
-              _id: this.parentDoc._id,
-              'children._ct': {
-                $exists: true
-              },
-              'children.text': {
-                $exists: false
-              }
+          const docs = await this.ParentModel.find({
+            _id: this.parentDoc._id,
+            'children._ct': {
+              $exists: true
             },
-            function(err, docs) {
-              assert.lengthOf(docs, 1);
-              assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
-              done();
+            'children.text': {
+              $exists: false
             }
-          );
+          });
+          assert.lengthOf(docs, 1);
+          assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
         });
       });
       describe('document.find()', function() {
