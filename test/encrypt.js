@@ -364,19 +364,13 @@ describe('document.save() on encrypted nested document', function() {
         areBirdsPretty: true
       }
     });
-    return this.nestTestDoc.save(function(err, doc) {
-      assert.equal(err, null);
-      done();
-    });
+    await this.nestTestDoc.save();
   });
   afterEach(async function() {
-    return this.nestTestDoc.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    await this.nestTestDoc.remove();
   });
   it('encrypts nested fields', async function() {
-    return this.ModelWithNest.find({
+    const docs = await this.ModelWithNest.find({
       _id: this.nestTestDoc._id,
       'nest._ct': {
         $exists: true
@@ -384,31 +378,20 @@ describe('document.save() on encrypted nested document', function() {
       'nest.birdColor': {
         $exists: false
       }
-    })
-      .lean()
-      .exec(function(err, docs) {
-        assert.equal(err, null);
-        assert.lengthOf(docs, 1);
-        done();
-      });
+    }).lean();
+    assert.lengthOf(docs, 1);
   });
   it('saves encrypted fields', async function() {
-    return this.ModelWithNest.find(
-      {
-        _id: this.nestTestDoc._id,
-        'nest._ct': {
-          $exists: true
-        }
-      },
-      function(err, docs) {
-        assert.equal(err, null);
-        assert.lengthOf(docs, 1);
-        assert.isObject(docs[0].nest);
-        assert.propertyVal(docs[0].nest, 'birdColor', 'blue');
-        assert.propertyVal(docs[0].nest, 'areBirdsPretty', true);
-        done();
+    const docs = await this.ModelWithNest.find({
+      _id: this.nestTestDoc._id,
+      'nest._ct': {
+        $exists: true
       }
-    );
+    });
+    assert.lengthOf(docs, 1);
+    assert.isObject(docs[0].nest);
+    assert.propertyVal(docs[0].nest, 'birdColor', 'blue');
+    assert.propertyVal(docs[0].nest, 'areBirdsPretty', true);
   });
 });
 
@@ -428,110 +411,84 @@ describe('document.save() when only certain fields are encrypted', function() {
       collectionId: 'PartiallyEncrypted',
       encryptedFields: ['encryptedText']
     });
-    return (this.PartiallyEncryptedModel = mongoose.model(
+    this.PartiallyEncryptedModel = mongoose.model(
       'PartiallyEncrypted',
       PartiallyEncryptedModelSchema
-    ));
+    );
   });
   beforeEach(async function() {
     this.partiallyEncryptedDoc = new this.PartiallyEncryptedModel({
       encryptedText: 'Encrypted Text',
       unencryptedText: 'Unencrypted Text'
     });
-    return this.partiallyEncryptedDoc.save(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    this.partiallyEncryptedDoc.save();
   });
   afterEach(async function() {
-    return this.partiallyEncryptedDoc.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    this.partiallyEncryptedDoc.remove();
   });
   it('should have decrypted fields', function() {
     assert.equal(this.partiallyEncryptedDoc.encryptedText, 'Encrypted Text');
     assert.propertyVal(this.partiallyEncryptedDoc, 'unencryptedText', 'Unencrypted Text');
   });
   it('should have encrypted fields undefined when encrypt is called', async function() {
-    return this.partiallyEncryptedDoc.encrypt(
-      (function(_this) {
-        return function() {
-          assert.equal(_this.partiallyEncryptedDoc.encryptedText, void 0);
-          assert.propertyVal(_this.partiallyEncryptedDoc, 'unencryptedText', 'Unencrypted Text');
-          done();
-        };
-      })(this)
-    );
+    await this.partiallyEncryptedDoc.encrypt();
+    assert.equal(this.partiallyEncryptedDoc.encryptedText, undefined);
+    assert.propertyVal(this.partiallyEncryptedDoc, 'unencryptedText', 'Unencrypted Text');
   });
   it('should have a field _ct containing a mongoose Buffer object which appears encrypted when encrypted', async function() {
-    return this.partiallyEncryptedDoc.encrypt(
-      (function(_this) {
-        return function() {
-          assert.isObject(_this.partiallyEncryptedDoc._ct);
-          assert.property(_this.partiallyEncryptedDoc.toObject()._ct, 'buffer');
-          assert.instanceOf(_this.partiallyEncryptedDoc.toObject()._ct.buffer, Buffer);
-          assert.isString(
-            _this.partiallyEncryptedDoc.toObject()._ct.toString(),
-            'ciphertext can be converted to a string'
-          );
-          assert['throw'](function() {
-            return JSON.parse(
-              this.partiallyEncryptedDoc.toObject()._ct.toString(),
-              'ciphertext is not parsable json'
-            );
-          });
-          done();
-        };
-      })(this)
+    await this.partiallyEncryptedDoc.encrypt();
+    assert.isObject(this.partiallyEncryptedDoc._ct);
+    assert.property(this.partiallyEncryptedDoc.toObject()._ct, 'buffer');
+    assert.instanceOf(this.partiallyEncryptedDoc.toObject()._ct.buffer, Buffer);
+    assert.isString(
+      this.partiallyEncryptedDoc.toObject()._ct.toString(),
+      'ciphertext can be converted to a string'
     );
+    assert.throw(function() {
+      return JSON.parse(
+        this.partiallyEncryptedDoc.toObject()._ct.toString(),
+        'ciphertext is not parsable json'
+      );
+    });
   });
   it('should not overwrite _ct or _ac when saved after a find that didnt retrieve _ct or _ac', async function() {
-    return this.PartiallyEncryptedModel.findById(this.partiallyEncryptedDoc)
-      .select('unencryptedText')
-      .exec(
-        (function(_this) {
-          return function(err, doc) {
-            assert.equal(err, null);
-            assert.equal(doc._ct, void 0);
-            assert.equal(doc._ac, void 0);
-            assert.propertyVal(
-              doc,
-              'unencryptedText',
-              'Unencrypted Text',
-              'selected unencrypted fields should be found'
-            );
-            return doc.save(function(err) {
-              assert.equal(err, null);
-              return _this.PartiallyEncryptedModel.findById(_this.partiallyEncryptedDoc)
-                .select('unencryptedText _ct _ac')
-                .exec(function(err, finalDoc) {
-                  assert.equal(err, null);
-                  assert.equal(finalDoc._ct, void 0);
-                  assert.propertyVal(
-                    finalDoc,
-                    'unencryptedText',
-                    'Unencrypted Text',
-                    'selected unencrypted fields should still be found after the select -> save'
-                  );
-                  assert.propertyVal(
-                    finalDoc,
-                    'encryptedText',
-                    'Encrypted Text',
-                    'encrypted fields werent overwritten during the select -> save'
-                  );
-                  done();
-                });
-            });
-          };
-        })(this)
-      );
+    const doc = await this.PartiallyEncryptedModel.findById(this.partiallyEncryptedDoc).select(
+      'unencryptedText'
+    );
+
+    assert.equal(doc._ct, undefined);
+    assert.equal(doc._ac, undefined);
+    assert.propertyVal(
+      doc,
+      'unencryptedText',
+      'Unencrypted Text',
+      'selected unencrypted fields should be found'
+    );
+    await doc.save();
+
+    const finalDoc = await this.PartiallyEncryptedModel.findById(this.partiallyEncryptedDoc).select(
+      'unencryptedText _ct _ac'
+    );
+
+    assert.equal(finalDoc._ct, undefined);
+    assert.propertyVal(
+      finalDoc,
+      'unencryptedText',
+      'Unencrypted Text',
+      'selected unencrypted fields should still be found after the select -> save'
+    );
+    assert.propertyVal(
+      finalDoc,
+      'encryptedText',
+      'Encrypted Text',
+      'encrypted fields werent overwritten during the select -> save'
+    );
   });
 });
 
 describe('EncryptedModel.create()', function() {
   beforeEach(function() {
-    return (this.docContents = {
+    this.docContents = {
       text: 'Unencrypted text',
       bool: true,
       num: 42,
@@ -543,84 +500,71 @@ describe('EncryptedModel.create()', function() {
         bool: false
       },
       buf: Buffer.from('abcdefg')
-    });
+    };
   });
   afterEach(async function() {
-    return BasicEncryptedModel.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return BasicEncryptedModel.remove();
   });
   it('when doc created, it should pass an unencrypted version to the callback', async function() {
-    return BasicEncryptedModel.create(this.docContents, function(err, doc) {
-      assert.equal(err, null);
-      assert.propertyVal(doc, 'text', 'Unencrypted text');
-      assert.propertyVal(doc, 'bool', true);
-      assert.propertyVal(doc, 'num', 42);
-      assert.property(doc, 'date');
-      assert.equal(doc.date.toString(), new Date('2014-05-19T16:39:07.536Z').toString());
-      assert.equal(doc.id2.toString(), '5303e65d34e1e80d7a7ce212');
-      assert.lengthOf(doc.arr, 2);
-      assert.equal(doc.arr[0], 'alpha');
-      assert.equal(doc.arr[1], 'bravo');
-      assert.property(doc, 'mix');
-      assert.deepEqual(doc.mix, {
-        str: 'A string',
-        bool: false
-      });
-      assert.property(doc, 'buf');
-      assert.equal(doc.buf.toString(), 'abcdefg');
-      assert.property(doc, '_id');
-      assert.notProperty(doc, '_ct');
-      done();
+    const doc = await BasicEncryptedModel.create(this.docContents);
+    assert.propertyVal(doc, 'text', 'Unencrypted text');
+    assert.propertyVal(doc, 'bool', true);
+    assert.propertyVal(doc, 'num', 42);
+    assert.property(doc, 'date');
+    assert.equal(doc.date.toString(), new Date('2014-05-19T16:39:07.536Z').toString());
+    assert.equal(doc.id2.toString(), '5303e65d34e1e80d7a7ce212');
+    assert.lengthOf(doc.arr, 2);
+    assert.equal(doc.arr[0], 'alpha');
+    assert.equal(doc.arr[1], 'bravo');
+    assert.property(doc, 'mix');
+    assert.deepEqual(doc.mix, {
+      str: 'A string',
+      bool: false
     });
+    assert.property(doc, 'buf');
+    assert.equal(doc.buf.toString(), 'abcdefg');
+    assert.property(doc, '_id');
+    assert.notProperty(doc, '_ct');
   });
   it('after doc created, should be encrypted in db', async function() {
-    return BasicEncryptedModel.create(this.docContents, function(err, doc) {
-      assert.equal(err, null);
-      assert.ok(doc._id);
-      return BasicEncryptedModel.find(
-        {
-          _id: doc._id,
-          _ct: {
-            $exists: true
-          },
-          text: {
-            $exists: false
-          },
-          bool: {
-            $exists: false
-          },
-          num: {
-            $exists: false
-          },
-          date: {
-            $exists: false
-          },
-          id2: {
-            $exists: false
-          },
-          arr: {
-            $exists: false
-          },
-          mix: {
-            $exists: false
-          },
-          buf: {
-            $exists: false
-          }
-        },
-        function(err, docs) {
-          assert.lengthOf(docs, 1);
-          return done(err);
-        }
-      );
+    const doc = await BasicEncryptedModel.create(this.docContents);
+    assert.ok(doc._id);
+    const docs = await BasicEncryptedModel.find({
+      _id: doc._id,
+      _ct: {
+        $exists: true
+      },
+      text: {
+        $exists: false
+      },
+      bool: {
+        $exists: false
+      },
+      num: {
+        $exists: false
+      },
+      date: {
+        $exists: false
+      },
+      id2: {
+        $exists: false
+      },
+      arr: {
+        $exists: false
+      },
+      mix: {
+        $exists: false
+      },
+      buf: {
+        $exists: false
+      }
     });
+    assert.lengthOf(docs, 1);
   });
 });
 
 describe('EncryptedModel.find()', function() {
-  const simpleTestDoc3 = null;
+  let simpleTestDoc3 = null;
   before(async function() {
     this.sandbox = sinon.sandbox.create();
     this.sandbox.spy(BasicEncryptedModel.prototype, 'authenticateSync');
@@ -638,86 +582,59 @@ describe('EncryptedModel.find()', function() {
       },
       buf: Buffer.from('abcdefg')
     });
-    return simpleTestDoc3.save(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    await simpleTestDoc3.save();
   });
   beforeEach(function() {
     BasicEncryptedModel.prototype.authenticateSync.reset();
-    return BasicEncryptedModel.prototype.decryptSync.reset();
+    BasicEncryptedModel.prototype.decryptSync.reset();
   });
   after(async function() {
     this.sandbox.restore();
-    return simpleTestDoc3.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    await simpleTestDoc3.remove();
   });
   it('when doc found, should pass an unencrypted version to the callback', async function() {
-    return BasicEncryptedModel.findById(simpleTestDoc3._id, function(err, doc) {
-      assert.equal(err, null);
-      assert.propertyVal(doc, 'text', 'Unencrypted text');
-      assert.propertyVal(doc, 'bool', true);
-      assert.propertyVal(doc, 'num', 42);
-      assert.property(doc, 'date');
-      assert.equal(doc.date.toString(), new Date('2014-05-19T16:39:07.536Z').toString());
-      assert.equal(doc.id2.toString(), '5303e65d34e1e80d7a7ce212');
-      assert.lengthOf(doc.arr, 2);
-      assert.equal(doc.arr[0], 'alpha');
-      assert.equal(doc.arr[1], 'bravo');
-      assert.property(doc, 'mix');
-      assert.deepEqual(doc.mix, {
-        str: 'A string',
-        bool: false
-      });
-      assert.property(doc, 'buf');
-      assert.equal(doc.buf.toString(), 'abcdefg');
-      assert.property(doc, '_id');
-      assert.notProperty(doc, '_ct');
-      done();
+    const doc = await BasicEncryptedModel.findById(simpleTestDoc3._id);
+    assert.propertyVal(doc, 'text', 'Unencrypted text');
+    assert.propertyVal(doc, 'bool', true);
+    assert.propertyVal(doc, 'num', 42);
+    assert.property(doc, 'date');
+    assert.equal(doc.date.toString(), new Date('2014-05-19T16:39:07.536Z').toString());
+    assert.equal(doc.id2.toString(), '5303e65d34e1e80d7a7ce212');
+    assert.lengthOf(doc.arr, 2);
+    assert.equal(doc.arr[0], 'alpha');
+    assert.equal(doc.arr[1], 'bravo');
+    assert.property(doc, 'mix');
+    assert.deepEqual(doc.mix, {
+      str: 'A string',
+      bool: false
     });
+    assert.property(doc, 'buf');
+    assert.equal(doc.buf.toString(), 'abcdefg');
+    assert.property(doc, '_id');
+    assert.notProperty(doc, '_ct');
   });
   it('when doc not found by id, should pass null to the callback', async function() {
-    return BasicEncryptedModel.findById('534ec48d60069bc13338b354', function(err, doc) {
-      assert.equal(err, null);
-      assert.equal(doc, null);
-      done();
-    });
+    assert.equal(await BasicEncryptedModel.findById('534ec48d60069bc13338b354', null));
   });
   it('when doc not found by query, should pass [] to the callback', async function() {
-    return BasicEncryptedModel.find(
-      {
-        text: 'banana'
-      },
-      function(err, doc) {
-        assert.equal(err, null);
-        assert.isArray(doc);
-        assert.lengthOf(doc, 0);
-        done();
-      }
-    );
+    const docs = await BasicEncryptedModel.find({
+      text: 'banana'
+    });
+    assert.isArray(docs);
+    assert.lengthOf(docs, 0);
   });
   it('should have called authenticateSync then decryptSync', async function() {
-    return BasicEncryptedModel.findById(simpleTestDoc3._id, function(err, doc) {
-      assert.equal(err, null);
-      assert.ok(doc);
-      assert.equal(doc.authenticateSync.callCount, 1);
-      assert.equal(doc.decryptSync.callCount, 1);
-      assert(doc.authenticateSync.calledBefore(doc.decryptSync, 'authenticated before decrypted'));
-      done();
-    });
+    const doc = await BasicEncryptedModel.findById(simpleTestDoc3._id);
+    assert.ok(doc);
+    assert.equal(doc.authenticateSync.callCount, 1);
+    assert.equal(doc.decryptSync.callCount, 1);
+    assert(doc.authenticateSync.calledBefore(doc.decryptSync, 'authenticated before decrypted'));
   });
   it('if all authenticated fields selected, should not throw an error', async function() {
-    return BasicEncryptedModel.findById(simpleTestDoc3._id)
-      .select('_ct _ac')
-      .exec(function(err, doc) {
-        assert.equal(err, null);
-        assert.propertyVal(doc, 'text', 'Unencrypted text');
-        assert.propertyVal(doc, 'bool', true);
-        assert.propertyVal(doc, 'num', 42);
-        done();
-      });
+    const doc = await BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ct _ac');
+    assert.propertyVal(doc, 'text', 'Unencrypted text');
+    assert.propertyVal(doc, 'bool', true);
+    assert.propertyVal(doc, 'num', 42);
   });
   it('if only some authenticated fields selected, should throw an error', async function() {
     return BasicEncryptedModel.findById(simpleTestDoc3._id)
@@ -751,28 +668,24 @@ describe('EncryptedModel.find() lean option', function() {
       buf: Buffer.from('abcdefg')
     });
     return simpleTestDoc4.save(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   after(async function() {
-    return simpleTestDoc4.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return simpleTestDoc4.remove();
   });
   it('should have encrypted fields undefined on saved document', async function() {
     return BasicEncryptedModel.findById(simpleTestDoc4._id)
       .lean()
       .exec(function(err, doc) {
-        assert.equal(doc.text, void 0);
-        assert.equal(doc.bool, void 0);
-        assert.equal(doc.num, void 0);
-        assert.equal(doc.date, void 0);
-        assert.equal(doc.id2, void 0);
-        assert.equal(doc.arr, void 0);
-        assert.equal(doc.mix, void 0);
-        assert.equal(doc.buf, void 0);
+        assert.equal(doc.text, undefined);
+        assert.equal(doc.bool, undefined);
+        assert.equal(doc.num, undefined);
+        assert.equal(doc.date, undefined);
+        assert.equal(doc.id2, undefined);
+        assert.equal(doc.arr, undefined);
+        assert.equal(doc.mix, undefined);
+        assert.equal(doc.buf, undefined);
         done();
       });
   });
@@ -784,7 +697,7 @@ describe('EncryptedModel.find() lean option', function() {
         assert.property(doc._ct, 'buffer');
         assert.instanceOf(doc._ct.buffer, Buffer);
         assert.isString(doc._ct.toString(), 'ciphertext can be converted to a string');
-        assert['throw'](function() {
+        assert.throw(function() {
           return JSON.parse(doc._ct.toString(), 'ciphertext is not parsable json');
         });
         done();
@@ -810,19 +723,18 @@ describe('document.encrypt()', function() {
       idx: 'Indexed'
     });
     return simpleTestDoc5.encrypt(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   it('should have encrypted fields undefined', async function() {
-    assert.equal(simpleTestDoc5.text, void 0);
-    assert.equal(simpleTestDoc5.bool, void 0);
-    assert.equal(simpleTestDoc5.num, void 0);
-    assert.equal(simpleTestDoc5.date, void 0);
-    assert.equal(simpleTestDoc5.id2, void 0);
-    assert.equal(simpleTestDoc5.arr, void 0);
-    assert.equal(simpleTestDoc5.mix, void 0);
-    assert.equal(simpleTestDoc5.buf, void 0);
+    assert.equal(simpleTestDoc5.text, undefined);
+    assert.equal(simpleTestDoc5.bool, undefined);
+    assert.equal(simpleTestDoc5.num, undefined);
+    assert.equal(simpleTestDoc5.date, undefined);
+    assert.equal(simpleTestDoc5.id2, undefined);
+    assert.equal(simpleTestDoc5.arr, undefined);
+    assert.equal(simpleTestDoc5.mix, undefined);
+    assert.equal(simpleTestDoc5.buf, undefined);
     done();
   });
   it('should not encrypt indexed fields by default', async function() {
@@ -837,7 +749,7 @@ describe('document.encrypt()', function() {
       simpleTestDoc5.toObject()._ct.toString(),
       'ciphertext can be converted to a string'
     );
-    assert['throw'](function() {
+    assert.throw(function() {
       return JSON.parse(
         simpleTestDoc5.toObject()._ct.toString(),
         'ciphertext is not parsable json'
@@ -850,7 +762,6 @@ describe('document.encrypt()', function() {
       text: 'Unencrypted text'
     });
     return allAsciiDoc.encrypt(function(err) {
-      assert.equal(err, null);
       assert.notMatch(allAsciiDoc.toObject()._ct.toString(), /^[\x00-\x7F]*$/);
       done();
     });
@@ -893,7 +804,6 @@ describe('document.decrypt()', function() {
       idx: 'Indexed'
     });
     return this.simpleTestDoc6.encrypt(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
@@ -901,29 +811,28 @@ describe('document.decrypt()', function() {
     return this.encryptedSimpleTestDoc.decrypt(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          assert.propertyVal(_this.encryptedSimpleTestDoc, 'text', 'Unencrypted text');
-          assert.propertyVal(_this.encryptedSimpleTestDoc, 'bool', true);
-          assert.propertyVal(_this.encryptedSimpleTestDoc, 'num', 42);
-          assert.property(_this.encryptedSimpleTestDoc, 'date');
+          assert.propertyVal(this.encryptedSimpleTestDoc, 'text', 'Unencrypted text');
+          assert.propertyVal(this.encryptedSimpleTestDoc, 'bool', true);
+          assert.propertyVal(this.encryptedSimpleTestDoc, 'num', 42);
+          assert.property(this.encryptedSimpleTestDoc, 'date');
           assert.equal(
-            _this.encryptedSimpleTestDoc.date.toString(),
+            this.encryptedSimpleTestDoc.date.toString(),
             new Date('2014-05-19T16:39:07.536Z').toString()
           );
-          assert.equal(_this.encryptedSimpleTestDoc.id2.toString(), '5303e65d34e1e80d7a7ce212');
-          assert.lengthOf(_this.encryptedSimpleTestDoc.arr, 2);
-          assert.equal(_this.encryptedSimpleTestDoc.arr[0], 'alpha');
-          assert.equal(_this.encryptedSimpleTestDoc.arr[1], 'bravo');
-          assert.property(_this.encryptedSimpleTestDoc, 'mix');
-          assert.deepEqual(_this.encryptedSimpleTestDoc.mix, {
+          assert.equal(this.encryptedSimpleTestDoc.id2.toString(), '5303e65d34e1e80d7a7ce212');
+          assert.lengthOf(this.encryptedSimpleTestDoc.arr, 2);
+          assert.equal(this.encryptedSimpleTestDoc.arr[0], 'alpha');
+          assert.equal(this.encryptedSimpleTestDoc.arr[1], 'bravo');
+          assert.property(this.encryptedSimpleTestDoc, 'mix');
+          assert.deepEqual(this.encryptedSimpleTestDoc.mix, {
             str: 'A string',
             bool: false
           });
-          assert.property(_this.encryptedSimpleTestDoc, 'buf');
-          assert.equal(_this.encryptedSimpleTestDoc.buf.toString(), 'abcdefg');
-          assert.propertyVal(_this.encryptedSimpleTestDoc, 'idx', 'Indexed');
-          assert.property(_this.encryptedSimpleTestDoc, '_id');
-          assert.notProperty(_this.encryptedSimpleTestDoc, '_ct');
+          assert.property(this.encryptedSimpleTestDoc, 'buf');
+          assert.equal(this.encryptedSimpleTestDoc.buf.toString(), 'abcdefg');
+          assert.propertyVal(this.encryptedSimpleTestDoc, 'idx', 'Indexed');
+          assert.property(this.encryptedSimpleTestDoc, '_id');
+          assert.notProperty(this.encryptedSimpleTestDoc, '_ct');
           done();
         };
       })(this)
@@ -933,29 +842,28 @@ describe('document.decrypt()', function() {
     return this.simpleTestDoc6.decrypt(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          assert.propertyVal(_this.simpleTestDoc6, 'text', 'Unencrypted text');
-          assert.propertyVal(_this.simpleTestDoc6, 'bool', true);
-          assert.propertyVal(_this.simpleTestDoc6, 'num', 42);
-          assert.property(_this.simpleTestDoc6, 'date');
+          assert.propertyVal(this.simpleTestDoc6, 'text', 'Unencrypted text');
+          assert.propertyVal(this.simpleTestDoc6, 'bool', true);
+          assert.propertyVal(this.simpleTestDoc6, 'num', 42);
+          assert.property(this.simpleTestDoc6, 'date');
           assert.equal(
-            _this.simpleTestDoc6.date.toString(),
+            this.simpleTestDoc6.date.toString(),
             new Date('2014-05-19T16:39:07.536Z').toString()
           );
-          assert.equal(_this.simpleTestDoc6.id2.toString(), '5303e65d34e1e80d7a7ce212');
-          assert.lengthOf(_this.simpleTestDoc6.arr, 2);
-          assert.equal(_this.simpleTestDoc6.arr[0], 'alpha');
-          assert.equal(_this.simpleTestDoc6.arr[1], 'bravo');
-          assert.property(_this.simpleTestDoc6, 'mix');
-          assert.deepEqual(_this.simpleTestDoc6.mix, {
+          assert.equal(this.simpleTestDoc6.id2.toString(), '5303e65d34e1e80d7a7ce212');
+          assert.lengthOf(this.simpleTestDoc6.arr, 2);
+          assert.equal(this.simpleTestDoc6.arr[0], 'alpha');
+          assert.equal(this.simpleTestDoc6.arr[1], 'bravo');
+          assert.property(this.simpleTestDoc6, 'mix');
+          assert.deepEqual(this.simpleTestDoc6.mix, {
             str: 'A string',
             bool: false
           });
-          assert.property(_this.simpleTestDoc6, 'buf');
-          assert.equal(_this.simpleTestDoc6.buf.toString(), 'abcdefg');
-          assert.propertyVal(_this.simpleTestDoc6, 'idx', 'Indexed');
-          assert.property(_this.simpleTestDoc6, '_id');
-          assert.notProperty(_this.simpleTestDoc6, '_ct');
+          assert.property(this.simpleTestDoc6, 'buf');
+          assert.equal(this.simpleTestDoc6.buf.toString(), 'abcdefg');
+          assert.propertyVal(this.simpleTestDoc6, 'idx', 'Indexed');
+          assert.property(this.simpleTestDoc6, '_id');
+          assert.notProperty(this.simpleTestDoc6, '_ct');
           done();
         };
       })(this)
@@ -965,31 +873,29 @@ describe('document.decrypt()', function() {
     return this.encryptedSimpleTestDoc.decrypt(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          return _this.encryptedSimpleTestDoc.decrypt(function(err) {
-            assert.equal(err, null);
-            assert.propertyVal(_this.encryptedSimpleTestDoc, 'text', 'Unencrypted text');
-            assert.propertyVal(_this.encryptedSimpleTestDoc, 'bool', true);
-            assert.propertyVal(_this.encryptedSimpleTestDoc, 'num', 42);
-            assert.property(_this.encryptedSimpleTestDoc, 'date');
+          return this.encryptedSimpleTestDoc.decrypt(function(err) {
+            assert.propertyVal(this.encryptedSimpleTestDoc, 'text', 'Unencrypted text');
+            assert.propertyVal(this.encryptedSimpleTestDoc, 'bool', true);
+            assert.propertyVal(this.encryptedSimpleTestDoc, 'num', 42);
+            assert.property(this.encryptedSimpleTestDoc, 'date');
             assert.equal(
-              _this.encryptedSimpleTestDoc.date.toString(),
+              this.encryptedSimpleTestDoc.date.toString(),
               new Date('2014-05-19T16:39:07.536Z').toString()
             );
-            assert.equal(_this.encryptedSimpleTestDoc.id2.toString(), '5303e65d34e1e80d7a7ce212');
-            assert.lengthOf(_this.encryptedSimpleTestDoc.arr, 2);
-            assert.equal(_this.encryptedSimpleTestDoc.arr[0], 'alpha');
-            assert.equal(_this.encryptedSimpleTestDoc.arr[1], 'bravo');
-            assert.property(_this.encryptedSimpleTestDoc, 'mix');
-            assert.deepEqual(_this.encryptedSimpleTestDoc.mix, {
+            assert.equal(this.encryptedSimpleTestDoc.id2.toString(), '5303e65d34e1e80d7a7ce212');
+            assert.lengthOf(this.encryptedSimpleTestDoc.arr, 2);
+            assert.equal(this.encryptedSimpleTestDoc.arr[0], 'alpha');
+            assert.equal(this.encryptedSimpleTestDoc.arr[1], 'bravo');
+            assert.property(this.encryptedSimpleTestDoc, 'mix');
+            assert.deepEqual(this.encryptedSimpleTestDoc.mix, {
               str: 'A string',
               bool: false
             });
-            assert.property(_this.encryptedSimpleTestDoc, 'buf');
-            assert.equal(_this.encryptedSimpleTestDoc.buf.toString(), 'abcdefg');
-            assert.propertyVal(_this.encryptedSimpleTestDoc, 'idx', 'Indexed');
-            assert.property(_this.encryptedSimpleTestDoc, '_id');
-            assert.notProperty(_this.encryptedSimpleTestDoc, '_ct');
+            assert.property(this.encryptedSimpleTestDoc, 'buf');
+            assert.equal(this.encryptedSimpleTestDoc.buf.toString(), 'abcdefg');
+            assert.propertyVal(this.encryptedSimpleTestDoc, 'idx', 'Indexed');
+            assert.property(this.encryptedSimpleTestDoc, '_id');
+            assert.notProperty(this.encryptedSimpleTestDoc, '_ct');
             done();
           });
         };
@@ -1016,15 +922,11 @@ describe('document.decryptSync()', function() {
       idx: 'Indexed'
     });
     return simpleTestDoc7.encrypt(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   after(async function() {
-    return simpleTestDoc7.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return simpleTestDoc7.remove();
   });
   it('should return an unencrypted version', async function() {
     simpleTestDoc7.decryptSync();
@@ -1102,12 +1004,10 @@ describe('"encryptedFields" option', function() {
       num: 43
     });
     return fieldsEncryptedDoc.encrypt(function(err) {
-      assert.equal(err, null);
-      assert.equal(fieldsEncryptedDoc.text, void 0);
-      assert.equal(fieldsEncryptedDoc.bool, void 0);
+      assert.equal(fieldsEncryptedDoc.text, undefined);
+      assert.equal(fieldsEncryptedDoc.bool, undefined);
       assert.propertyVal(fieldsEncryptedDoc, 'num', 43);
       return fieldsEncryptedDoc.decrypt(function(err) {
-        assert.equal(err, null);
         assert.equal(fieldsEncryptedDoc.text, 'Unencrypted text');
         assert.equal(fieldsEncryptedDoc.bool, false);
         assert.propertyVal(fieldsEncryptedDoc, 'num', 43);
@@ -1146,12 +1046,10 @@ describe('"encryptedFields" option', function() {
       num: 43
     });
     return fieldsEncryptedDoc.encrypt(function(err) {
-      assert.equal(err, null);
-      assert.equal(fieldsEncryptedDoc.text, void 0);
-      assert.equal(fieldsEncryptedDoc.bool, void 0);
+      assert.equal(fieldsEncryptedDoc.text, undefined);
+      assert.equal(fieldsEncryptedDoc.bool, undefined);
       assert.propertyVal(fieldsEncryptedDoc, 'num', 43);
       return fieldsEncryptedDoc.decrypt(function(err) {
-        assert.equal(err, null);
         assert.equal(fieldsEncryptedDoc.text, 'Unencrypted text');
         assert.equal(fieldsEncryptedDoc.bool, false);
         assert.propertyVal(fieldsEncryptedDoc, 'num', 43);
@@ -1193,13 +1091,11 @@ describe('"excludeFromEncryption" option', function() {
       idx: 'Indexed'
     });
     return excludeEncryptedDoc.encrypt(function(err) {
-      assert.equal(err, null);
-      assert.equal(excludeEncryptedDoc.text, void 0);
-      assert.equal(excludeEncryptedDoc.bool, void 0);
+      assert.equal(excludeEncryptedDoc.text, undefined);
+      assert.equal(excludeEncryptedDoc.bool, undefined);
       assert.propertyVal(excludeEncryptedDoc, 'num', 43);
       assert.propertyVal(excludeEncryptedDoc, 'idx', 'Indexed');
       return excludeEncryptedDoc.decrypt(function(err) {
-        assert.equal(err, null);
         assert.equal(excludeEncryptedDoc.text, 'Unencrypted text');
         assert.equal(excludeEncryptedDoc.bool, false);
         assert.propertyVal(excludeEncryptedDoc, 'num', 43);
@@ -1234,19 +1130,15 @@ describe('"decryptPostSave" option', function() {
     done();
   });
   afterEach(async function() {
-    return this.HighPerformanceModel.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.HighPerformanceModel.remove();
   });
   it('saves encrypted fields correctly', async function() {
     return this.doc.save(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          return _this.HighPerformanceModel.find(
+          return this.HighPerformanceModel.find(
             {
-              _id: _this.doc._id,
+              _id: this.doc._id,
               _ct: {
                 $exists: true
               },
@@ -1255,7 +1147,6 @@ describe('"decryptPostSave" option', function() {
               }
             },
             function(err, docs) {
-              assert.equal(err, null);
               assert.lengthOf(docs, 1);
               assert.propertyVal(docs[0], 'text', 'Unencrypted text');
               done();
@@ -1267,11 +1158,9 @@ describe('"decryptPostSave" option', function() {
   });
   it('returns encrypted data after save', async function() {
     return this.doc.save(function(err, savedDoc) {
-      assert.equal(err, null);
       assert.property(savedDoc, '_ct', 'Document remains encrypted after save');
       assert.notProperty(savedDoc, 'text');
       return savedDoc.decrypt(function(err) {
-        assert.equal(err, null);
         assert.notProperty(savedDoc, '_ct');
         assert.propertyVal(
           savedDoc,
@@ -1328,7 +1217,7 @@ describe('Array EmbeddedDocument', function() {
       });
       describe('document.save()', function() {
         it('should not have decrypted fields', function() {
-          assert.equal(this.parentDoc.children[0].text, void 0);
+          assert.equal(this.parentDoc.children[0].text, undefined);
         });
         it('should persist children as encrypted', async function() {
           return this.ParentModel.find(
@@ -1342,7 +1231,6 @@ describe('Array EmbeddedDocument', function() {
               }
             },
             function(err, docs) {
-              assert.equal(err, null);
               assert.lengthOf(docs, 1);
               assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
               done();
@@ -1353,7 +1241,6 @@ describe('Array EmbeddedDocument', function() {
       describe('document.find()', function() {
         it('when parent doc found, should pass an unencrypted version of the embedded document to the callback', async function() {
           return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
-            assert.equal(err, null);
             assert.propertyVal(doc, 'text', 'Unencrypted text');
             assert.isArray(doc.children);
             assert.isObject(doc.children[0]);
@@ -1372,13 +1259,13 @@ describe('Array EmbeddedDocument', function() {
               (function(_this) {
                 return function(err, doc) {
                   var childDoc1CipherText, childDoc2CipherText;
-                  assert.equal(err, null);
+
                   assert.isArray(doc.children);
                   childDoc1CipherText = doc.children[0]._ct;
                   childDoc2CipherText = doc.children[1]._ct;
-                  return _this.ParentModel.update(
+                  return this.ParentModel.update(
                     {
-                      _id: _this.parentDoc._id
+                      _id: this.parentDoc._id
                     },
                     {
                       $set: {
@@ -1387,9 +1274,7 @@ describe('Array EmbeddedDocument', function() {
                       }
                     },
                     function(err) {
-                      assert.equal(err, null);
-                      return _this.ParentModel.findById(_this.parentDoc._id, function(err, doc) {
-                        assert.equal(err, null);
+                      return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
                         assert.isArray(doc.children);
                         assert.property(
                           doc.children[0],
@@ -1469,7 +1354,6 @@ describe('Array EmbeddedDocument', function() {
               }
             },
             function(err, docs) {
-              assert.equal(err, null);
               assert.lengthOf(docs, 1);
               assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
               done();
@@ -1480,7 +1364,6 @@ describe('Array EmbeddedDocument', function() {
       describe('document.find()', function() {
         it('when parent doc found, should pass an unencrypted version of the embedded document to the callback', async function() {
           return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
-            assert.equal(err, null);
             assert.propertyVal(doc, 'text', 'Unencrypted text');
             assert.isArray(doc.children);
             assert.isObject(doc.children[0]);
@@ -1499,13 +1382,13 @@ describe('Array EmbeddedDocument', function() {
               (function(_this) {
                 return function(err, doc) {
                   var childDoc1CipherText, childDoc2CipherText;
-                  assert.equal(err, null);
+
                   assert.isArray(doc.children);
                   childDoc1CipherText = doc.children[0]._ct;
                   childDoc2CipherText = doc.children[1]._ct;
-                  return _this.ParentModel.update(
+                  return this.ParentModel.update(
                     {
-                      _id: _this.parentDoc._id
+                      _id: this.parentDoc._id
                     },
                     {
                       $set: {
@@ -1514,9 +1397,7 @@ describe('Array EmbeddedDocument', function() {
                       }
                     },
                     function(err) {
-                      assert.equal(err, null);
-                      return _this.ParentModel.findById(_this.parentDoc._id, function(err, doc) {
-                        assert.equal(err, null);
+                      return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
                         assert.isArray(doc.children);
                         assert.property(
                           doc.children[0],
@@ -1599,9 +1480,9 @@ describe('Array EmbeddedDocument', function() {
                 if (err) {
                   return done(err);
                 }
-                return _this.ParentModel.find(
+                return this.ParentModel.find(
                   {
-                    _id: _this.parentDoc._id,
+                    _id: this.parentDoc._id,
                     'children._ct': {
                       $exists: true
                     },
@@ -1639,7 +1520,7 @@ describe('Array EmbeddedDocument', function() {
                 if (err) {
                   return done(err);
                 }
-                return _this.ParentModel.findById(_this.parentDoc._id).exec(function(err, doc) {
+                return this.ParentModel.findById(this.parentDoc._id).exec(function(err, doc) {
                   if (err) {
                     return done(err);
                   }
@@ -1718,7 +1599,6 @@ describe('Array EmbeddedDocument', function() {
             }
           },
           function(err, docs) {
-            assert.equal(err, null);
             assert.lengthOf(docs, 1);
             assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
             done();
@@ -1729,7 +1609,6 @@ describe('Array EmbeddedDocument', function() {
     describe('document.find()', function() {
       it('when parent doc found, should pass an unencrypted version of the embedded document to the callback', async function() {
         return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
-          assert.equal(err, null);
           assert.propertyVal(doc, 'text', 'Unencrypted text');
           assert.isArray(doc.children);
           assert.isObject(doc.children[0]);
@@ -1748,13 +1627,13 @@ describe('Array EmbeddedDocument', function() {
             (function(_this) {
               return function(err, doc) {
                 var childDoc1CipherText, childDoc2CipherText;
-                assert.equal(err, null);
+
                 assert.isArray(doc.children);
                 childDoc1CipherText = doc.children[0]._ct;
                 childDoc2CipherText = doc.children[1]._ct;
-                return _this.ParentModel.update(
+                return this.ParentModel.update(
                   {
-                    _id: _this.parentDoc._id
+                    _id: this.parentDoc._id
                   },
                   {
                     $set: {
@@ -1763,8 +1642,7 @@ describe('Array EmbeddedDocument', function() {
                     }
                   },
                   function(err) {
-                    assert.equal(err, null);
-                    return _this.ParentModel.findById(_this.parentDoc._id, function(err, doc) {
+                    return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
                       assert.ok(err, 'There was an error');
                       assert.propertyVal(err, 'message', 'Authentication failed');
                       done();
@@ -1832,7 +1710,6 @@ describe('Array EmbeddedDocument', function() {
             }
           },
           function(err, docs) {
-            assert.equal(err, null);
             assert.lengthOf(docs, 1);
             assert.propertyVal(docs[0], 'text', 'Unencrypted text');
             assert.propertyVal(docs[0].children[0], 'text', 'Child unencrypted text');
@@ -1844,7 +1721,6 @@ describe('Array EmbeddedDocument', function() {
     return describe('document.find()', function() {
       it('when parent doc found, should pass an unencrypted version of the embedded document to the callback', async function() {
         return this.ParentModel.findById(this.parentDoc._id, function(err, doc) {
-          assert.equal(err, null);
           assert.propertyVal(doc, 'text', 'Unencrypted text');
           assert.isArray(doc.children);
           assert.isObject(doc.children[0]);
@@ -2037,7 +1913,6 @@ describe('Array EmbeddedDocument', function() {
               ]
             });
             return doc.save(function(err) {
-              assert.equal(err, null);
               assert.propertyVal(doc, 'text', 'here it is');
               assert.isArray(doc.children);
               assert.property(doc.children[0], '_id');
@@ -2069,15 +1944,11 @@ describe('document.sign()', function() {
       idx: 'Indexed'
     });
     return this.testDoc.sign(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   after(async function() {
-    return this.testDoc.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.testDoc.remove();
   });
   it('should return an signed version', async function() {
     assert.property(this.testDoc, '_ac');
@@ -2088,9 +1959,8 @@ describe('document.sign()', function() {
     return this.testDoc.sign(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          assert.property(_this.testDoc, '_ac');
-          assert.ok(bufferEqual(_this.testDoc._ac, _this.initialAC));
+          assert.property(this.testDoc, '_ac');
+          assert.ok(bufferEqual(this.testDoc._ac, this.initialAC));
           done();
         };
       })(this)
@@ -2117,9 +1987,7 @@ describe('document.sign() on encrypted document', function() {
     return this.testDoc.encrypt(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          return _this.testDoc.sign(function(err) {
-            assert.equal(err, null);
+          return this.testDoc.sign(function(err) {
             done();
           });
         };
@@ -2127,10 +1995,7 @@ describe('document.sign() on encrypted document', function() {
     );
   });
   after(async function() {
-    return this.testDoc.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.testDoc.remove();
   });
   it('should return an signed version', async function() {
     assert.property(this.testDoc, '_ac');
@@ -2141,9 +2006,8 @@ describe('document.sign() on encrypted document', function() {
     return this.testDoc.sign(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          assert.property(_this.testDoc, '_ac');
-          assert.ok(bufferEqual(_this.testDoc._ac, _this.initialAC));
+          assert.property(this.testDoc, '_ac');
+          assert.ok(bufferEqual(this.testDoc._ac, this.initialAC));
           done();
         };
       })(this)
@@ -2169,21 +2033,17 @@ describe('document.authenticateSync()', function() {
       idx: 'Indexed'
     });
     return this.testDocAS.sign(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   afterEach(async function() {
-    return this.testDocAS.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.testDocAS.remove();
   });
   it('should return without an error if document is signed and unmodified', function() {
     assert.doesNotThrow(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2193,7 +2053,7 @@ describe('document.authenticateSync()', function() {
     assert.doesNotThrow(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2203,7 +2063,7 @@ describe('document.authenticateSync()', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2213,7 +2073,7 @@ describe('document.authenticateSync()', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2228,7 +2088,7 @@ describe('document.authenticateSync()', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2242,7 +2102,7 @@ describe('document.authenticateSync()', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2252,17 +2112,17 @@ describe('document.authenticateSync()', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
   });
   it('should throw error if _ac has been set to undefined', function() {
-    this.testDocAS._ac = void 0;
+    this.testDocAS._ac = undefined;
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2272,7 +2132,7 @@ describe('document.authenticateSync()', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2299,9 +2159,7 @@ describe('document.authenticateSync() on encrypted documents', function() {
     return this.testDocAS.encrypt(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          return _this.testDocAS.sign(function(err) {
-            assert.equal(err, null);
+          return this.testDocAS.sign(function(err) {
             done();
           });
         };
@@ -2309,16 +2167,13 @@ describe('document.authenticateSync() on encrypted documents', function() {
     );
   });
   afterEach(async function() {
-    return this.testDocAS.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.testDocAS.remove();
   });
   it('should return without an error if document is signed and unmodified', function() {
     assert.doesNotThrow(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2328,7 +2183,7 @@ describe('document.authenticateSync() on encrypted documents', function() {
     assert.doesNotThrow(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2338,7 +2193,7 @@ describe('document.authenticateSync() on encrypted documents', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2348,7 +2203,7 @@ describe('document.authenticateSync() on encrypted documents', function() {
     assert.throws(
       (function(_this) {
         return function() {
-          return _this.testDocAS.authenticateSync();
+          return this.testDocAS.authenticateSync();
         };
       })(this)
     );
@@ -2373,15 +2228,11 @@ describe('document.authenticate()', function() {
       idx: 'Indexed'
     });
     return this.testDocA.sign(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   afterEach(async function() {
-    return this.testDocA.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.testDocA.remove();
   });
   it('should pass error if _ac has been modified to have authenticated fields = []', async function() {
     var acWithoutAFLength, bareBuffer, blankArrayBuffer;
@@ -2443,9 +2294,7 @@ describe('Tampering with an encrypted document', function() {
     return this.testDoc.save(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          return _this.testDoc2.save(function(err) {
-            assert.equal(err, null);
+          return this.testDoc2.save(function(err) {
             done();
           });
         };
@@ -2456,11 +2305,7 @@ describe('Tampering with an encrypted document', function() {
     return this.testDoc.remove(
       (function(_this) {
         return function(err) {
-          assert.equal(err, null);
-          return _this.testDoc2.remove(function(err) {
-            assert.equal(err, null);
-            done();
-          });
+          return this.testDoc2.remove();
         };
       })(this)
     );
@@ -2474,11 +2319,11 @@ describe('Tampering with an encrypted document', function() {
         (function(_this) {
           return function(err, doc2) {
             var ctForSwap;
-            assert.equal(err, null);
+
             ctForSwap = doc2._ct.buffer;
             return BasicEncryptedModel.update(
               {
-                _id: _this.testDoc._id
+                _id: this.testDoc._id
               },
               {
                 $set: {
@@ -2488,10 +2333,10 @@ describe('Tampering with an encrypted document', function() {
             ).exec(function(err, raw) {
               var n;
               n = raw.n || raw;
-              assert.equal(err, null);
+
               assert.equal(n, 1);
               return BasicEncryptedModel.findOne({
-                _id: _this.testDoc._id
+                _id: this.testDoc._id
               }).exec(function(err, doc) {
                 assert.ok(err);
                 done();
@@ -2532,22 +2377,17 @@ describe('additionalAuthenticatedFields option', function() {
       num: 42
     });
     return this.testDocAF.save(function(err) {
-      assert.equal(err, null);
       done();
     });
   });
   afterEach(async function() {
-    return this.testDocAF.remove(function(err) {
-      assert.equal(err, null);
-      done();
-    });
+    return this.testDocAF.remove();
   });
   it('find should succeed if document is unmodified', async function() {
     return AuthenticatedFieldsModel.findById(
       this.testDocAF._id,
       (function(_this) {
         return function(err, doc) {
-          assert.equal(err, null);
           done();
         };
       })(this)
@@ -2568,10 +2408,9 @@ describe('additionalAuthenticatedFields option', function() {
         return function(err, raw) {
           var n;
           n = raw.n || raw;
-          assert.equal(err, null);
+
           assert.equal(n, 1);
-          return AuthenticatedFieldsModel.findById(_this.testDocAF._id, function(err, doc) {
-            assert.equal(err, null);
+          return AuthenticatedFieldsModel.findById(this.testDocAF._id, function(err, doc) {
             assert.propertyVal(doc, 'num', 48);
             done();
           });
@@ -2594,9 +2433,9 @@ describe('additionalAuthenticatedFields option', function() {
         return function(err, raw) {
           var n;
           n = raw.n || raw;
-          assert.equal(err, null);
+
           assert.equal(n, 1);
-          return AuthenticatedFieldsModel.findById(_this.testDocAF._id, function(err, doc) {
+          return AuthenticatedFieldsModel.findById(this.testDocAF._id, function(err, doc) {
             assert.ok(err, 'There was an error');
             assert.propertyVal(err, 'message', 'Authentication failed');
             done();
@@ -2642,10 +2481,10 @@ describe('"requireAuthenticationCode" option', function() {
         (function(_this) {
           return function(err, raw) {
             var docs;
-            assert.equal(err, null);
+
             docs = raw.ops || raw;
-            _this.docId = docs[0]._id;
-            _this.doc2Id = docs[1]._id;
+            this.docId = docs[0]._id;
+            this.doc2Id = docs[1]._id;
             done();
           };
         })(this)
@@ -2653,7 +2492,6 @@ describe('"requireAuthenticationCode" option', function() {
     });
     after(async function() {
       return LessSecureModel.remove({}, function(err) {
-        assert.equal(err, null);
         done();
       });
     });
@@ -2666,11 +2504,9 @@ describe('"requireAuthenticationCode" option', function() {
             assert.propertyVal(unmigratedDoc1, 'text', 'Plain');
             assert.propertyVal(unmigratedDoc1, 'bool', true);
             return unmigratedDoc1.save(function(err) {
-              assert.equal(err, null);
-              return LessSecureModel.findById(_this.docId)
+              return LessSecureModel.findById(this.docId)
                 .lean()
                 .exec(function(err, rawDoc1) {
-                  assert.equal(err, null);
                   assert.notProperty(
                     rawDoc1,
                     'text',
@@ -2679,8 +2515,7 @@ describe('"requireAuthenticationCode" option', function() {
                   assert.notProperty(rawDoc1, 'bool');
                   assert.property(rawDoc1, '_ct', 'raw in db should have ciphertext');
                   assert.property(rawDoc1, '_ac', 'raw in db should have authentication code');
-                  return LessSecureModel.findById(_this.docId, function(err, unmigratedDoc1) {
-                    assert.equal(err, null);
+                  return LessSecureModel.findById(this.docId, function(err, unmigratedDoc1) {
                     assert.propertyVal(unmigratedDoc1, 'text', 'Plain');
                     assert.propertyVal(unmigratedDoc1, 'bool', true);
                     done();
@@ -2726,12 +2561,10 @@ describe('period in field name in options', function() {
       }
     });
     return nestedDoc.encrypt(function(err) {
-      assert.equal(err, null);
-      assert.equal(nestedDoc.nest.secretBird, void 0);
-      assert.equal(nestedDoc.nest.secretBird2, void 0);
+      assert.equal(nestedDoc.nest.secretBird, undefined);
+      assert.equal(nestedDoc.nest.secretBird2, undefined);
       assert.equal(nestedDoc.nest.publicBird, 'Unencrypted text 3');
       return nestedDoc.decrypt(function(err) {
-        assert.equal(err, null);
         assert.equal(nestedDoc.nest.secretBird, 'Unencrypted text');
         assert.equal(nestedDoc.nest.secretBird2, 'Unencrypted text 2');
         assert.equal(nestedDoc.nest.publicBird, 'Unencrypted text 3');
@@ -2765,10 +2598,8 @@ describe('period in field name in options', function() {
       }
     });
     return nestedDoc.encrypt(function(err) {
-      assert.equal(err, null);
-      assert.equal(nestedDoc.nest.secretBird.topSecretEgg, void 0);
+      assert.equal(nestedDoc.nest.secretBird.topSecretEgg, undefined);
       return nestedDoc.decrypt(function(err) {
-        assert.equal(err, null);
         assert.equal(nestedDoc.nest.secretBird.topSecretEgg, 'Unencrypted text');
         done();
       });
@@ -2807,25 +2638,20 @@ describe('saving same authenticated document twice asynchronously', function() {
       },
       (function(_this) {
         return function(err, doc) {
-          assert.equal(err, null);
           doc.text = 'Altered text';
           return TwoFieldAuthModel.findOne(
             {
-              _id: _this.testDoc._id
+              _id: this.testDoc._id
             },
             function(err, docAgain) {
-              assert.equal(err, null);
               docAgain.num = 55;
               return doc.save(function(err) {
-                assert.equal(err, null);
                 return docAgain.save(function(err) {
-                  assert.equal(err, null);
                   return TwoFieldAuthModel.find(
                     {
-                      _id: _this.testDoc._id
+                      _id: this.testDoc._id
                     },
                     function(err, finalDocs) {
-                      assert.equal(err, null);
                       assert.lengthOf(finalDocs, 1);
                       assert.propertyVal(finalDocs[0], 'text', 'Unencrypted text');
                       assert.propertyVal(finalDocs[0], 'num', 55);
@@ -2923,11 +2749,11 @@ describe('migrations', function() {
           (function(_this) {
             return function(err, raw) {
               var docs;
-              assert.equal(err, null);
+
               docs = raw.ops || raw;
-              _this.docId = docs[0]._id;
-              _this.doc2Id = docs[1]._id;
-              return OriginalModel.findById(_this.docId, function(err, doc) {
+              this.docId = docs[0]._id;
+              this.doc2Id = docs[1]._id;
+              return OriginalModel.findById(this.docId, function(err, doc) {
                 assert.ok(err, 'There should be an authentication error before migration');
                 assert.propertyVal(err, 'message', 'Authentication code missing');
                 done();
@@ -2938,7 +2764,6 @@ describe('migrations', function() {
       });
       after(async function() {
         return OriginalModel.remove({}, function(err) {
-          assert.equal(err, null);
           done();
         });
       });
@@ -2946,8 +2771,7 @@ describe('migrations', function() {
         return MigrationModel.migrateToA(
           (function(_this) {
             return function(err) {
-              assert.equal(err, null);
-              return OriginalModel.findById(_this.docId, function(err, migratedDoc1) {
+              return OriginalModel.findById(this.docId, function(err, migratedDoc1) {
                 assert.equal(err, null, 'There should be no authentication error after migration');
                 assert.propertyVal(migratedDoc1, 'text', 'Unencrypted text');
                 assert.propertyVal(migratedDoc1, 'bool', true);
@@ -2971,7 +2795,7 @@ describe('migrations', function() {
                 assert.property(migratedDoc1, '_id');
                 assert.notProperty(migratedDoc1, '_ct');
                 assert.notProperty(migratedDoc1, '_ac');
-                return OriginalModel.findById(_this.doc2Id, function(err, migratedDoc2) {
+                return OriginalModel.findById(this.doc2Id, function(err, migratedDoc2) {
                   assert.equal(
                     err,
                     null,
@@ -3023,10 +2847,10 @@ describe('migrations', function() {
           (function(_this) {
             return function(err, raw) {
               var docs;
-              assert.equal(err, null);
+
               docs = raw.ops || raw;
-              _this.docId = docs[0]._id;
-              _this.doc2Id = docs[1]._id;
+              this.docId = docs[0]._id;
+              this.doc2Id = docs[1]._id;
               done();
             };
           })(this)
@@ -3034,7 +2858,6 @@ describe('migrations', function() {
       });
       after(async function() {
         return PreviouslyUnencryptedModel.remove({}, function(err) {
-          assert.equal(err, null);
           done();
         });
       });
@@ -3043,7 +2866,7 @@ describe('migrations', function() {
           (function(_this) {
             return function(err) {
               var PreviouslyUnencryptedModelMigrated, PreviouslyUnencryptedSchemaMigrated;
-              assert.equal(err, null);
+
               PreviouslyUnencryptedSchemaMigrated = mongoose.Schema(schemaObject);
               PreviouslyUnencryptedSchemaMigrated.plugin(encrypt, {
                 encryptionKey,
@@ -3056,10 +2879,9 @@ describe('migrations', function() {
                 PreviouslyUnencryptedSchemaMigrated,
                 'formerlyplains'
               );
-              return PreviouslyUnencryptedModelMigrated.findById(_this.docId)
+              return PreviouslyUnencryptedModelMigrated.findById(this.docId)
                 .lean()
                 .exec(function(err, migratedDoc) {
-                  assert.equal(err, null);
                   assert.notProperty(
                     migratedDoc,
                     'text',
@@ -3072,7 +2894,7 @@ describe('migrations', function() {
                     '_ct',
                     'Should have ciphertext in raw db after migration'
                   );
-                  return PreviouslyUnencryptedModelMigrated.findById(_this.docId, function(
+                  return PreviouslyUnencryptedModelMigrated.findById(this.docId, function(
                     err,
                     migratedDoc
                   ) {
@@ -3084,11 +2906,9 @@ describe('migrations', function() {
                     assert.propertyVal(migratedDoc, 'text', 'Plain');
                     assert.propertyVal(migratedDoc, 'bool', true);
                     return migratedDoc.save(function(err) {
-                      assert.equal(err, null);
-                      return PreviouslyUnencryptedModelMigrated.findById(_this.docId)
+                      return PreviouslyUnencryptedModelMigrated.findById(this.docId)
                         .lean()
                         .exec(function(err, migratedDoc) {
-                          assert.equal(err, null);
                           assert.notProperty(
                             migratedDoc,
                             'text',
@@ -3191,9 +3011,9 @@ describe('migrations', function() {
           (function(_this) {
             return function(err, raw) {
               var docs;
-              assert.equal(err, null);
+
               docs = raw.ops || raw;
-              _this.docId = docs[0]._id;
+              this.docId = docs[0]._id;
               done();
             };
           })(this)
@@ -3201,7 +3021,6 @@ describe('migrations', function() {
       });
       after(async function() {
         return this.OriginalParentModel.remove({}, function(err) {
-          assert.equal(err, null);
           done();
         });
       });
@@ -3221,9 +3040,7 @@ describe('migrations', function() {
           'children',
           (function(_this) {
             return function(err) {
-              assert.equal(err, null);
-              return _this.OriginalParentModel.findById(_this.docId, function(err, migratedDoc) {
-                assert.equal(err, null);
+              return this.OriginalParentModel.findById(this.docId, function(err, migratedDoc) {
                 assert.isArray(migratedDoc.children);
                 assert.lengthOf(migratedDoc.children, 2);
                 assert.propertyVal(migratedDoc.children[0], 'text', 'Child unencrypted text');
@@ -3270,10 +3087,10 @@ describe('migrations', function() {
         (function(_this) {
           return function(err, raw) {
             var docs;
-            assert.equal(err, null);
+
             docs = raw.ops || raw;
-            _this.docId = docs[0]._id;
-            _this.doc2Id = docs[1]._id;
+            this.docId = docs[0]._id;
+            this.doc2Id = docs[1]._id;
             done();
           };
         })(this)
@@ -3281,7 +3098,6 @@ describe('migrations', function() {
     });
     after(async function() {
       return UnsignedModel.remove({}, function(err) {
-        assert.equal(err, null);
         done();
       });
     });
@@ -3289,13 +3105,12 @@ describe('migrations', function() {
       return UnsignedModel.signAll(
         (function(_this) {
           return function(err) {
-            assert.equal(err, null);
             UnsignedSchema.plugin(encrypt, {
               encryptionKey,
               signingKey,
               _suppressDuplicatePluginError: true
             });
-            return UnsignedModel.findById(_this.docId, function(err, signedDoc) {
+            return UnsignedModel.findById(this.docId, function(err, signedDoc) {
               assert.equal(err, null, 'There should be no authentication error after signing');
               assert.propertyVal(signedDoc, 'text', 'Plain');
               assert.propertyVal(signedDoc, 'bool', true);
@@ -3317,7 +3132,7 @@ describe('migrations', function() {
       EncryptedSchema.plugin(encrypt, {
         secret
       });
-      assert['throw'](function() {
+      assert.throw(function() {
         return EncryptedSchema.plugin(encrypt.migrations, {
           secret
         });
@@ -3333,7 +3148,7 @@ describe('migrations', function() {
       EncryptedSchema.plugin(encrypt.migrations, {
         secret
       });
-      assert['throw'](function() {
+      assert.throw(function() {
         return EncryptedSchema.plugin(encrypt, {
           secret
         });
