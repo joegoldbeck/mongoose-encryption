@@ -438,7 +438,6 @@ describe('document.save() when only certain fields are encrypted', function() {
   });
   it('should have a field _ct containing a mongoose Buffer object which appears encrypted when encrypted', async function() {
     await this.partiallyEncryptedDoc.encrypt();
-    assert.isObject(this.partiallyEncryptedDoc._ct);
     assert.property(this.partiallyEncryptedDoc.toObject()._ct, 'buffer');
     assert.instanceOf(this.partiallyEncryptedDoc.toObject()._ct.buffer, Buffer);
     assert.isString(
@@ -653,7 +652,7 @@ describe('EncryptedModel.find()', function() {
 });
 
 describe('EncryptedModel.find() lean option', function() {
-  const simpleTestDoc4 = null;
+  let simpleTestDoc4 = null;
   before(async function() {
     simpleTestDoc4 = new BasicEncryptedModel({
       text: 'Unencrypted text',
@@ -707,7 +706,7 @@ describe('EncryptedModel.find() lean option', function() {
 });
 
 describe('document.encrypt()', function() {
-  const simpleTestDoc5 = null;
+  let simpleTestDoc5 = null;
   beforeEach(async function() {
     simpleTestDoc5 = new BasicEncryptedModel({
       text: 'Unencrypted text',
