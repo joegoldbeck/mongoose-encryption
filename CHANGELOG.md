@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.0.2
+2019-2-10
+- Upgrade mpath dependency #84
+
 ## v.2.0.1
 2018-7-30
 - Upgrade dependencies
