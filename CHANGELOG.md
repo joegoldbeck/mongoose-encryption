@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.0.3
+2020-11-29
+- Add TypeScript type declarations
+
 ## v2.0.2
 2019-2-10
 - Upgrade mpath dependency #84
