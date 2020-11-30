@@ -17,6 +17,7 @@
     "HMAC"
   ],
   "main": "./index.js",
+  "types": "./types/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git://github.com/joegoldbeck/mongoose-encryption.git"
@@ -39,16 +40,18 @@
     "mongoose": ">=5.0.0"
   },
   "devDependencies": {
-    "mocha": "^1.0.0",
-    "mongoose": ">=5.0.0",
     "chai": "^1.0.0",
     "coffeescript": "^1.7.0",
-    "sinon": "^1.10.3"
+    "mocha": "^1.0.0",
+    "mongoose": ">=5.0.0",
+    "sinon": "^1.10.3",
+    "typescript": "^4.1.2"
   },
   "engines": {
     "node": ">=4.4.5"
   },
   "scripts": {
-    "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000"
+    "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000",
+    "build-ts": "tsc"
   }
 }
