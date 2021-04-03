@@ -346,7 +346,7 @@ Feel like contributing with different kinds of bits? Eth: 0xb53b70d5BE66a03E85F6
 
 The MIT License (MIT)
 
-Copyright (c) 2016-2018 Joseph Goldbeck
+Copyright (c) 2016-2021 Joseph Goldbeck
 
 Copyright (c) 2014-2015 Joseph Goldbeck and Connect Financial, LLC
 
