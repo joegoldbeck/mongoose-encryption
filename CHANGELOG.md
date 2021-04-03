@@ -1,5 +1,11 @@
 # Release Notes
 
+## v2.1.0
+2021-04-03
+- Support for large documents under Node v15
+- Add CI testing for latest stable Node version
+- Remove support for Node v4 & v6
+
 ## v2.0.3
 2020-11-29
 - Add TypeScript type declarations
