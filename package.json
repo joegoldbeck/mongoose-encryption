@@ -42,7 +42,7 @@
   "devDependencies": {
     "chai": "^1.0.0",
     "coffeescript": "^1.7.0",
-    "mocha": "^1.0.0",
+    "mocha": "^9.0.0",
     "mongoose": ">=5.0.0",
     "sinon": "^1.10.3",
     "typescript": "^4.1.2"
@@ -51,7 +51,7 @@
     "node": ">=4.4.5"
   },
   "scripts": {
-    "test": "mocha ./test --compilers coffee:coffeescript/register --timeout 3000",
+    "test": "mocha ./test --extension coffee --require coffeescript/register --timeout 3000 --exit",
     "build-ts": "tsc"
   }
 }

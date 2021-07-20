@@ -328,7 +328,7 @@ Disadvantages:
 ## How to Run Unit Tests
 
 0. Install dependencies with `npm install` and [install mongo](http://docs.mongodb.org/manual/installation/) if you don't have it yet
-1. Start mongo with `mongod`
+1. Start mongo with `mongod` (or `brew services start mongodb-community`)
 2. Run tests with `npm test`
 
 

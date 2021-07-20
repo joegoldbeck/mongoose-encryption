@@ -144,6 +144,7 @@ describe 'document.save()', ->
       assert.equal err, null
       assert.lengthOf docs, 1
       done()
+    return
 
   it 'returns decrypted data after save', (done) ->
     @simpleTestDoc2.save (err, doc) ->
@@ -164,7 +165,7 @@ describe 'document.save()', ->
       catch err
         done err
 
-   it 'should have called encryptSync then authenticateSync then decryptSynd', ->
+   it 'should have called encryptSync then authenticateSync then decryptSync', ->
     assert.equal @simpleTestDoc2.sign.callCount, 1
     assert.equal @simpleTestDoc2.encrypt.callCount, 1
     assert.equal @simpleTestDoc2.decryptSync.callCount, 1
@@ -220,6 +221,7 @@ describe 'document.save() on encrypted document which contains nesting', ->
       assert.propertyVal docs[0].nest, 'birdColor', 'blue'
       assert.propertyVal docs[0].nest, 'areBirdsPretty', true
       done()
+    return
 
 describe 'document.save() on encrypted nested document', ->
   before ->
@@ -271,6 +273,7 @@ describe 'document.save() on encrypted nested document', ->
       assert.propertyVal docs[0].nest, 'birdColor', 'blue'
       assert.propertyVal docs[0].nest, 'areBirdsPretty', true
       done()
+    return
 
 describe 'document.save() when only certain fields are encrypted', ->
   before ->
@@ -347,6 +350,7 @@ describe 'EncryptedModel.create()', ->
     BasicEncryptedModel.remove (err) ->
       assert.equal err, null
       done()
+    return
 
   it 'when doc created, it should pass an unencrypted version to the callback', (done) ->
     BasicEncryptedModel.create @docContents, (err, doc) ->
@@ -437,12 +441,14 @@ describe 'EncryptedModel.find()', ->
       assert.property doc, '_id'
       assert.notProperty doc, '_ct'
       done()
+    return
 
   it 'when doc not found by id, should pass null to the callback', (done) ->
     BasicEncryptedModel.findById '534ec48d60069bc13338b354', (err, doc) ->
       assert.equal err, null
       assert.equal doc, null
       done()
+    return
 
   it 'when doc not found by query, should pass [] to the callback', (done) ->
     BasicEncryptedModel.find text: 'banana', (err, doc) ->
@@ -450,6 +456,7 @@ describe 'EncryptedModel.find()', ->
       assert.isArray doc
       assert.lengthOf doc, 0
       done()
+    return
 
   it 'should have called authenticateSync then decryptSync', (done) ->
     BasicEncryptedModel.findById simpleTestDoc3._id, (err, doc) ->
@@ -459,6 +466,7 @@ describe 'EncryptedModel.find()', ->
       assert.equal doc.decryptSync.callCount, 1
       assert doc.authenticateSync.calledBefore doc.decryptSync, 'authenticated before decrypted'
       done()
+    return
 
   it 'if all authenticated fields selected, should not throw an error', (done) ->
     BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ct _ac').exec (err, doc) ->
@@ -467,6 +475,7 @@ describe 'EncryptedModel.find()', ->
       assert.propertyVal doc, 'bool', true
       assert.propertyVal doc, 'num', 42
       done()
+    return
 
   it 'if only some authenticated fields selected, should throw an error', (done) ->
     BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ct').exec (err, doc) ->
@@ -474,6 +483,7 @@ describe 'EncryptedModel.find()', ->
       BasicEncryptedModel.findById(simpleTestDoc3._id).select('_ac').exec (err, doc) ->
         assert.ok err
         done()
+    return
 
 
 describe 'EncryptedModel.find() lean option', ->
@@ -842,6 +852,7 @@ describe '"decryptPostSave" option', ->
     @HighPerformanceModel.remove (err) ->
       assert.equal err, null
       done()
+    return
 
   it 'saves encrypted fields correctly', (done) ->
     @doc.save (err) =>
@@ -917,6 +928,7 @@ describe 'Array EmbeddedDocument', ->
             assert.lengthOf docs, 1
             assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
             done()
+          return
 
       describe 'document.find()', ->
         it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
@@ -929,6 +941,7 @@ describe 'Array EmbeddedDocument', ->
             assert.property doc.children[0], '_id'
             assert.notProperty doc.children[0], '_ct'
             done()
+          return
 
       describe 'tampering with child documents by swapping their ciphertext', ->
         it 'should not cause an error because embedded documents are not self-authenticated', (done) ->
@@ -949,6 +962,7 @@ describe 'Array EmbeddedDocument', ->
                   assert.property doc.children[0], 'text', 'Second unencrypted text', 'Ciphertext was swapped'
                   assert.property doc.children[1], 'text', 'Child unencrypted text', 'Ciphertext was swapped'
                   done()
+          return
 
     describe 'and parent has encryptedChildren plugin', ->
       before ->
@@ -998,6 +1012,7 @@ describe 'Array EmbeddedDocument', ->
             assert.lengthOf docs, 1
             assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
             done()
+          return
 
       describe 'document.find()', ->
         it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
@@ -1010,6 +1025,7 @@ describe 'Array EmbeddedDocument', ->
             assert.property doc.children[0], '_id'
             assert.notProperty doc.children[0], '_ct'
             done()
+          return
 
       describe 'tampering with child documents by swapping their ciphertext', ->
         it 'should not cause an error because embedded documents are not self-authenticated', (done) ->
@@ -1091,6 +1107,7 @@ describe 'Array EmbeddedDocument', ->
               assert.equal doc.children.length, 1
 
               done()
+        return
 
       it 'should persist children as encrypted after adding a child', (done) ->
         @ParentModel.findById @parentDoc._id, (err, doc) =>
@@ -1109,6 +1126,7 @@ describe 'Array EmbeddedDocument', ->
               assert.equal doc.children.length, 3
 
               done()
+        return
 
   describe 'when child and parent are encrypted', ->
     before ->
@@ -1165,6 +1183,7 @@ describe 'Array EmbeddedDocument', ->
           assert.lengthOf docs, 1
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
           done()
+        return
 
     describe 'document.find()', ->
       it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
@@ -1178,6 +1197,7 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
+        return
 
     describe 'when child field is in additionalAuthenticatedFields on parent and child documents are tampered with by swapping their ciphertext', ->
       it 'should pass an error', (done) ->
@@ -1234,6 +1254,7 @@ describe 'Array EmbeddedDocument', ->
           assert.propertyVal docs[0], 'text', 'Unencrypted text'
           assert.propertyVal docs[0].children[0], 'text', 'Child unencrypted text'
           done()
+        return
 
     describe 'document.find()', ->
       it 'when parent doc found, should pass an unencrypted version of the embedded document to the callback', (done) ->
@@ -1246,6 +1267,7 @@ describe 'Array EmbeddedDocument', ->
           assert.property doc.children[0], '_id'
           assert.notProperty doc.children[0], '_ct'
           done()
+        return
 
   describe 'Encrypted embedded document when parent has validation error and doesnt have encryptedChildren plugin', ->
     before ->
@@ -1654,6 +1676,7 @@ describe 'Tampering with an encrypted document', ->
       @testDoc2.remove (err) ->
         assert.equal err, null
         done()
+    return
 
   it 'should throw an error on .find() if _ct is swapped from another document', (done) ->
     BasicEncryptedModel.findOne(_id: @testDoc2._id).lean().exec (err, doc2) =>
@@ -1666,6 +1689,7 @@ describe 'Tampering with an encrypted document', ->
         BasicEncryptedModel.findOne(_id: @testDoc._id).exec (err, doc) =>
           assert.ok err
           done()
+    return
 
 
 describe 'additionalAuthenticatedFields option', ->
@@ -1698,11 +1722,13 @@ describe 'additionalAuthenticatedFields option', ->
     @testDocAF.remove (err) ->
       assert.equal err, null
       done()
+    return
 
   it 'find should succeed if document is unmodified', (done) ->
     AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
       assert.equal err, null
       done()
+    return
 
   it 'find should succeed if non-authenticated field is modified directly', (done) ->
     AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: num: 48}).exec (err, raw) =>
@@ -1713,6 +1739,7 @@ describe 'additionalAuthenticatedFields option', ->
         assert.equal err, null
         assert.propertyVal doc, 'num', 48
         done()
+    return
 
   it 'find should fail if non-authenticated field is modified directly', (done) ->
     AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: bool: false}).exec (err, raw) =>
@@ -1723,6 +1750,7 @@ describe 'additionalAuthenticatedFields option', ->
         assert.ok err, 'There was an error'
         assert.propertyVal err, 'message', 'Authentication failed'
         done()
+    return
 
 describe '"requireAuthenticationCode" option', ->
   describe 'set to false and plugin used with existing collection without a migration', ->
@@ -1759,6 +1787,7 @@ describe '"requireAuthenticationCode" option', ->
       LessSecureModel.remove {}, (err) ->
         assert.equal err, null
         done()
+      return
 
     it 'should just work', (done) ->
       LessSecureModel.findById @docId, (err, unmigratedDoc1) =>
@@ -1780,6 +1809,7 @@ describe '"requireAuthenticationCode" option', ->
               assert.propertyVal unmigratedDoc1, 'text', 'Plain'
               assert.propertyVal unmigratedDoc1, 'bool', true
               done()
+      return
 
 
 describe 'period in field name in options', ->
@@ -1855,6 +1885,7 @@ describe 'saving same authenticated document twice asynchronously', ->
       text: 'Unencrypted text'
       num: 42
     @testDoc.save(done)
+    return
 
   it 'should not cause errors, and the second save to authenticated fields should override the first in order (a transaction is forced)', (done) ->
     TwoFieldAuthModel.findOne {_id: @testDoc._id}, (err, doc) =>
@@ -1878,6 +1909,7 @@ describe 'saving same authenticated document twice asynchronously', ->
               assert.propertyVal finalDocs[0], 'text', 'Unencrypted text'
               assert.propertyVal finalDocs[0], 'num', 55
               done()
+    return
 
 
 
@@ -1940,6 +1972,7 @@ describe 'migrations', ->
         OriginalModel.remove {}, (err) ->
           assert.equal err, null
           done()
+        return
 
       it 'should transform existing documents in collection such that they work with plugin version A', (done) ->
         MigrationModel.migrateToA (err) =>
@@ -2006,6 +2039,7 @@ describe 'migrations', ->
         PreviouslyUnencryptedModel.remove {}, (err) ->
           assert.equal err, null
           done()
+        return
 
       it 'should transform documents in an unencrypted collection such that they are signed and encrypted and work with plugin version A', (done) ->
         PreviouslyUnencryptedModel.migrateToA (err) =>
@@ -2102,6 +2136,7 @@ describe 'migrations', ->
         @OriginalParentModel.remove {}, (err) ->
           assert.equal err, null
           done()
+        return
 
       # This test is intentionally skipped to prevent misleading console messages
       it.skip 'migration definitely needed', (done) ->
@@ -2160,6 +2195,7 @@ describe 'migrations', ->
       UnsignedModel.remove {}, (err) ->
         assert.equal err, null
         done()
+      return
 
     it 'should transform documents in an unsigned collection such that they are signed and work with plugin version A', (done) ->
       UnsignedModel.signAll (err) =>
