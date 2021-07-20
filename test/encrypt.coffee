@@ -678,6 +678,14 @@ describe 'document.decrypt()', ->
         assert.notProperty @encryptedSimpleTestDoc, '_ct'
         done()
 
+  it 'should not mark any fields as modified', (done) ->
+    @encryptedSimpleTestDoc.modifiedPaths().forEach (path) =>
+      @encryptedSimpleTestDoc.unmarkModified(path)
+    assert.lengthOf @encryptedSimpleTestDoc.modifiedPaths(), 0, 'ensure that no fields start out marked modified before the test'
+    
+    @encryptedSimpleTestDoc.decrypt (err) => 
+      assert.lengthOf @encryptedSimpleTestDoc.modifiedPaths(), 0
+      done()
 
 describe 'document.decryptSync()', ->
   simpleTestDoc7 = null
@@ -740,6 +748,16 @@ describe 'document.decryptSync()', ->
     assert.propertyVal simpleTestDoc7, 'idx', 'Indexed'
     assert.property simpleTestDoc7, '_id'
     assert.notProperty simpleTestDoc7, '_ct'
+    done()
+
+  it 'should not mark any fields as modified', (done) ->
+    # ensure that no fields start out marked modified
+    simpleTestDoc7.modifiedPaths().forEach (path) ->
+      simpleTestDoc7.unmarkModified(path)
+    assert.lengthOf simpleTestDoc7.modifiedPaths(), 0, 'ensure that no fields start out marked modified before the test'
+
+    simpleTestDoc7.decryptSync()
+    assert.lengthOf simpleTestDoc7.modifiedPaths(), 0
     done()
 
 
