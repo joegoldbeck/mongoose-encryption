@@ -1,5 +1,9 @@
 # Release Notes
 
+## v2.1.1
+2021-09-10
+- Bump mpath dependency #101
+
 ## v2.1.0
 2021-04-03
 - Support for large documents under Node v15
