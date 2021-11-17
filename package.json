@@ -30,7 +30,7 @@
   "dependencies": {
     "async": "^2.6.1",
     "buffer-equal-constant-time": "^1.0.1",
-    "dotty": "~0.1.0",
+    "dotty": "^0.1.2",
     "json-stable-stringify": "^1.0.0",
     "mpath": "^0.8.4",
     "semver": "^5.5.0",
