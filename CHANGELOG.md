@@ -1,5 +1,10 @@
 # Release Notes
 
+## v2.1.2
+2021-11-16
+- Supported encrypted subdocuments in Mongoose 6 #102
+- Add CI testing for Mongoose 6
+
 ## v2.1.1
 2021-09-10
 - Bump mpath dependency #101
