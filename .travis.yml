@@ -4,3 +4,8 @@ node_js:
   - node
 services:
   - mongodb
+before_script:
+  - 'if [ "$MONGOOSE_VERSION" ]; then npm install mongoose@$MONGOOSE_VERSION; fi'
+env:
+  - MONGOOSE_VERSION=5
+  - MONGOOSE_VERSION=6
