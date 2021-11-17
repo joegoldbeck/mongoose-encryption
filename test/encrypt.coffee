@@ -1683,7 +1683,7 @@ describe 'Tampering with an encrypted document', ->
       assert.equal err, null
       ctForSwap = doc2._ct.buffer
       BasicEncryptedModel.update({_id: @testDoc._id}, {$set: _ct: doc2._ct}).exec (err, raw) =>
-        n = raw.n || raw
+        n = raw.n || raw.modifiedCount
         assert.equal err, null
         assert.equal n, 1
         BasicEncryptedModel.findOne(_id: @testDoc._id).exec (err, doc) =>
@@ -1732,7 +1732,7 @@ describe 'additionalAuthenticatedFields option', ->
 
   it 'find should succeed if non-authenticated field is modified directly', (done) ->
     AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: num: 48}).exec (err, raw) =>
-      n = raw.n || raw
+      n = raw.n || raw.modifiedCount
       assert.equal err, null
       assert.equal n, 1
       AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
@@ -1743,7 +1743,7 @@ describe 'additionalAuthenticatedFields option', ->
 
   it 'find should fail if non-authenticated field is modified directly', (done) ->
     AuthenticatedFieldsModel.update({_id: @testDocAF._id}, {$set: bool: false}).exec (err, raw) =>
-      n = raw.n || raw
+      n = raw.n || raw.modifiedCount
       assert.equal err, null
       assert.equal n, 1
       AuthenticatedFieldsModel.findById @testDocAF._id, (err, doc) =>
@@ -1778,7 +1778,7 @@ describe '"requireAuthenticationCode" option', ->
 
       LessSecureModel.collection.insert [plainDoc, plainDoc2], (err, raw) =>
         assert.equal err, null
-        docs = raw.ops || raw
+        docs = raw.ops || raw.insertedIds
         @docId = docs[0]._id
         @doc2Id = docs[1]._id
         done()
@@ -1960,7 +1960,7 @@ describe 'migrations', ->
 
         OriginalModel.collection.insert [docEncryptedWithOldVersion, docEncryptedWithOldVersion2], (err, raw) =>
           assert.equal err, null
-          docs = raw.ops || raw
+          docs = raw.ops || raw.insertedIds
           @docId = docs[0]._id
           @doc2Id = docs[1]._id
           OriginalModel.findById @docId, (err, doc) ->
@@ -2030,7 +2030,7 @@ describe 'migrations', ->
 
         PreviouslyUnencryptedModel.collection.insert [plainDoc, plainDoc2], (err, raw) =>
           assert.equal err, null
-          docs = raw.ops || raw
+          docs = raw.ops || raw.insertedIds
           @docId = docs[0]._id
           @doc2Id = docs[1]._id
           done()
@@ -2128,7 +2128,7 @@ describe 'migrations', ->
 
         @OriginalParentModel.collection.insert [docWithChildrenFromOldVersion], (err, raw) =>
           assert.equal err, null
-          docs = raw.ops || raw
+          docs = raw.ops || raw.insertedIds
           @docId = docs[0]._id
           done()
 
@@ -2186,7 +2186,7 @@ describe 'migrations', ->
 
       UnsignedModel.collection.insert [plainDoc, plainDoc2], (err, raw) =>
         assert.equal err, null
-        docs = raw.ops || raw
+        docs = raw.ops || raw.insertedIds
         @docId = docs[0]._id
         @doc2Id = docs[1]._id
         done()
