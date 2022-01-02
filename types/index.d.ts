@@ -7,6 +7,7 @@ declare function _exports(schema: any, options: {
     additionalAuthenticatedFields?: string[];
     requireAuthenticationCode?: boolean;
     decryptPostSave?: boolean;
+    handleDecryptionConflict?: import("./lib/plugins/mongoose-encryption").DecryptionConflictHandler;
     collectionId?: string;
 }): undefined;
 declare namespace _exports {

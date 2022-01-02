@@ -17,7 +17,7 @@ export function setFieldValue(obj: any, field: string, val: any): any;
  * @return     {Object}   An object containing only those fields that have been picked
  */
 export function pick(obj: any, fields: string[], options?: {
-    excludeUndefinedValues: boolean;
+    excludeUndefinedValues?: boolean;
 }): any;
 /**
  * Determines if embedded document.
