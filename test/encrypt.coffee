@@ -398,7 +398,7 @@ describe 'EncryptedModel.find()', ->
   before (done) ->
     @sandbox = sinon.sandbox.create()
     @sandbox.spy BasicEncryptedModel.prototype, 'authenticateSync'
-    @sandbox.spy BasicEncryptedModel.prototype, 'decryptSync'
+    @sandbox.spy BasicEncryptedModel.prototype, 'decryptData'
     simpleTestDoc3 = new BasicEncryptedModel
       text: 'Unencrypted text'
       bool: true
@@ -414,7 +414,7 @@ describe 'EncryptedModel.find()', ->
 
   beforeEach ->
     BasicEncryptedModel.prototype.authenticateSync.reset()
-    BasicEncryptedModel.prototype.decryptSync.reset()
+    BasicEncryptedModel.prototype.decryptData.reset()
 
   after (done) ->
     @sandbox.restore()
@@ -458,13 +458,13 @@ describe 'EncryptedModel.find()', ->
       done()
     return
 
-  it 'should have called authenticateSync then decryptSync', (done) ->
+  it 'should have called authenticateSync then decryptData', (done) ->
     BasicEncryptedModel.findById simpleTestDoc3._id, (err, doc) ->
       assert.equal err, null
       assert.ok doc
       assert.equal doc.authenticateSync.callCount, 1
-      assert.equal doc.decryptSync.callCount, 1
-      assert doc.authenticateSync.calledBefore doc.decryptSync, 'authenticated before decrypted'
+      assert.equal doc.decryptData.callCount, 1
+      assert doc.authenticateSync.calledBefore doc.decryptData, 'authenticated before decrypted'
       done()
     return
 
