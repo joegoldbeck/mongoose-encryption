@@ -194,8 +194,8 @@ You cannot change the following options once you've started using them for a col
 - `collectionId`
 
 Additionally, by default (see `cfMode` section below), you cannot change plugin options in a way that affects list of encrypted fields:
-- `encryptedFields` cannot not be changed
-- `excludeFromEncryption` cannot not be changed
+- `encryptedFields` cannot be changed
+- `excludeFromEncryption` cannot be changed
 - You cannot add or remove indexes on fields that are not explicitly excluded with `excludeFromEncryption` or `encryptedFields` option (index configuration change is allowed).
 
 ## `cfMode`: Storing list of encrypted fields
