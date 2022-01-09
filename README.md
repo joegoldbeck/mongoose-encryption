@@ -187,13 +187,82 @@ userSchema.plugin(encrypt, { secret: secret });
 
 
 ### Changing Options
-For the most part, you can seemlessly update the plugin options. This won't immediately change what is stored in the database, but it will change how documents are saved moving forwards.
-
-However, you cannot change the following options once you've started using them for a collection:
+You cannot change the following options once you've started using them for a collection:
 - `secret`
 - `encryptionKey`
 - `signingKey`
 - `collectionId`
+
+Additionally, by default (see `cfMode` section below), you cannot change plugin options in a way that affects list of encrypted fields:
+- `encryptedFields` cannot not be changed
+- `excludeFromEncryption` cannot not be changed
+- You cannot add or remove indexes on fields that are not explicitly excluded with `excludeFromEncryption` or `encryptedFields` option (index configuration change is allowed).
+
+## `cfMode`: Storing list of encrypted fields
+If you need to change which existing fields of a Schema should be encrypted, or reserve the ability to do that, you should set `cfMode` option to `require` before starting use Schema for a collection:
+```
+userSchema.plugin(encrypt, {
+  ...
+  cfMode: 'require',
+  ...
+});
+```
+
+Notice: you should set this option for all Schemas, including nested.
+
+When `cfMode` is required, a list of encrypted fields will be added to cipher text of each document. This way, each document will have their own list of encrypted fields.
+
+When a Schema with `cfMode: required` is modified, new documents will be encrypted by new rules, while existing documents will keep rules with which a document was created. This means, that updating a document will not automatically "reconfigure" its encryption.
+
+While existing documents will work transparently after Schema changes, notice, that because existing documents won't be automatically "reconfigured", query methods like `.find({...})` won't be able to access still encrypted information. And, of course, still non-encrypted information won't be protected by encryption.
+
+To "reconfigure" existing document, so that its encrypted fields list meet the Schema's configuration, the `updateCf` method can be used. For example, to "reconfigure" all the existing documents:
+```
+for await (const doc of MyModel.find()) {
+  doc.updateCf()
+  await doc.save()
+}
+```
+
+Hint: to update large collection, you can narrow search by looking for documents that looks like not reconfigured. Say, you've excluded 'newIndex' field from encryption. Having this, you can only run  `updateCt` on documents found by `NewModel.find({ newIndex: { $exists: false } })`.
+
+### Initializing list of encrypted fields for existing documents
+If you have existing Schema that have not been configured to store encrypted fields list, you can initialize the list of encrypted fields on existing documents created by such Schema, using `updateCf` method in maintenance mode (`cfMode: 'maintenance'`).
+
+Typically, the initialization procedure looks like this:
+
+1) Add `cfMode: required` option to plugin configuration of the Schema. Now the Schema will throw error if encounter a document without a list of encrypted fields. This ensures the Schema won't operate on unprepared Documents.
+
+2) Create a script with copy of the Schema ("MaintenanceSchema"), with exactly the same fields and plugin options that were used for existing documents. Set `cfMode: 'maintenance'` to this cloned MaintenanceSchema.
+
+3) Using MaintenanceSchema, iterate over all existing documents, call `updateCf` and save each.
+
+Example code:
+
+
+```
+// maintenance.js
+
+const MaintenanceSchema = new mongoose.Schema(
+  // ... Same as used for existing documents
+)
+
+MaintenanceSchema.plugin(encrypt, {
+  // ... Same as used for existing documents
+  cfMode: 'maintenance',
+});
+
+const MaintenanceModel = mongoose.model(..., MaintenanceSchema)
+
+for await (const doc of MaintenanceModel.find()) {
+  doc.updateCf()
+  await doc.save()
+}
+
+```
+
+4) Now you can seamlessly change your Schema.
+
 
 ### Instance Methods
 
