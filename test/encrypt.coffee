@@ -2277,5 +2277,21 @@ describe 'changing encrypted fields', ->
         assert.isObject doc, 'mix'
         assert.propertyVal doc['mix'], 'str', 'A string'
         assert.propertyVal doc['mix'], 'bool', false
-        done()
+
+        doc.num = 13
+        doc.save (err) ->
+          assert.equal err, null
+          LessEncryptedModel.find
+            _id: doc._id
+          , (err, docs) ->
+            assert.equal err, null
+            assert.lengthOf docs, 1
+            doc = docs[0]
+            assert.propertyVal doc, 'num', 13
+            assert.propertyVal doc, 'text', 'Unencrypted text'
+            assert.propertyVal doc, 'bool', true
+            assert.isObject doc, 'mix'
+            assert.propertyVal doc['mix'], 'str', 'A string'
+            assert.propertyVal doc['mix'], 'bool', false
+            done()
       return
