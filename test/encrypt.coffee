@@ -2214,13 +2214,13 @@ describe 'migrations', ->
           done()
 
   describe 'installing on schema alongside standard encrypt plugin', ->
-      it 'should throw an error if installed after standard encrypt plugin', ->
-        EncryptedSchema = mongoose.Schema
-          text: type: String
-        EncryptedSchema.plugin encrypt, secret: secret
-        assert.throw -> EncryptedSchema.plugin encrypt.migrations, secret: secret
-      it 'should cause encrypt plugin to throw an error if installed first', ->
-        EncryptedSchema = mongoose.Schema
-          text: type: String
-        EncryptedSchema.plugin encrypt.migrations, secret: secret
-        assert.throw -> EncryptedSchema.plugin encrypt, secret: secret
+    it 'should throw an error if installed after standard encrypt plugin', ->
+      EncryptedSchema = mongoose.Schema
+        text: type: String
+      EncryptedSchema.plugin encrypt, secret: secret
+      assert.throw -> EncryptedSchema.plugin encrypt.migrations, secret: secret
+    it 'should cause encrypt plugin to throw an error if installed first', ->
+      EncryptedSchema = mongoose.Schema
+        text: type: String
+      EncryptedSchema.plugin encrypt.migrations, secret: secret
+      assert.throw -> EncryptedSchema.plugin encrypt, secret: secret
