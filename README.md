@@ -331,14 +331,13 @@ Disadvantages:
 1. Start mongo with `mongod` (or `brew services start mongodb-community`)
 2. Run tests with `npm test`
 
-
 ## Security Issue Reporting / Disclaimer
 
-None of the authors are security experts. We relied on accepted tools and practices, and tried hard to make this tool solid and well-tested, but nobody's perfect. Please look over the code carefully before using it (and note the legal disclaimer below). **If you find or suspect any security-related issues, please email us at security@cinchfinancial.com** and we will get right on it. For non-security-related issues, please open a Github issue or pull request.
+See [SECURITY.md](./SECURITY.md)
 
 ## Acknowledgements
 
-Huge thanks goes out to [Cinch Financial](https://www.cinchfinancial.com) for supporting this plugin through version 1.0, as well as [@stash](//github.com/stash) for pointing out the limitations of earlier versions which lacked authentication and providing invaluable guidance and review on version 0.12.0.
+Huge thanks goes out to [Cinch Financial](https://www.cinchfinancial.com) for supporting this plugin through version 1.0, as well as [@stash](https://github.com/stash) for pointing out the limitations of earlier versions which lacked authentication and providing invaluable guidance and review on version 0.12.0.
 
 Feel like contributing with different kinds of bits? Eth: 0xb53b70d5BE66a03E85F6502d1D060871a79a47f7
 
@@ -346,7 +345,7 @@ Feel like contributing with different kinds of bits? Eth: 0xb53b70d5BE66a03E85F6
 
 The MIT License (MIT)
 
-Copyright (c) 2016-2021 Joseph Goldbeck
+Copyright (c) 2016-2022 Joseph Goldbeck
 
 Copyright (c) 2014-2015 Joseph Goldbeck and Connect Financial, LLC
 
