@@ -74,6 +74,8 @@ To exclude additional fields (other than _id and indexed fields), pass the `excl
 userSchema.plugin(encrypt, { encryptionKey: encKey, signingKey: sigKey, excludeFromEncryption: ['age'] });
 ```
 
+Note: only Schema's root fields can be excluded this way.
+
 ### Encrypt Only Certain Fields
 
 You can also specify exactly which fields to encrypt with the `encryptedFields` option. This overrides the defaults and all other options.

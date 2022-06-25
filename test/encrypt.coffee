@@ -834,6 +834,14 @@ describe '"excludeFromEncryption" option', ->
         assert.propertyVal excludeEncryptedDoc, 'idx', 'Indexed'
         done()
 
+  it 'should throw when an excludeFromEncryption contains a nested path', () ->
+    ExcludeEncryptedModelSchema = mongoose.Schema
+      num: type: Number
+      nested: type: Object
+
+    assert.throws ( -> ExcludeEncryptedModelSchema.plugin encrypt, encryptionKey: encryptionKey, signingKey: signingKey, collectionId: 'ExcludeEncrypted', excludeFromEncryption: ['num', 'nested.value'])
+
+    
 describe '"decryptPostSave" option', ->
   before ->
     HighPerformanceModelSchema = mongoose.Schema
