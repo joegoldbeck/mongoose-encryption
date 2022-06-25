@@ -2214,13 +2214,84 @@ describe 'migrations', ->
           done()
 
   describe 'installing on schema alongside standard encrypt plugin', ->
-      it 'should throw an error if installed after standard encrypt plugin', ->
-        EncryptedSchema = mongoose.Schema
-          text: type: String
-        EncryptedSchema.plugin encrypt, secret: secret
-        assert.throw -> EncryptedSchema.plugin encrypt.migrations, secret: secret
-      it 'should cause encrypt plugin to throw an error if installed first', ->
-        EncryptedSchema = mongoose.Schema
-          text: type: String
-        EncryptedSchema.plugin encrypt.migrations, secret: secret
-        assert.throw -> EncryptedSchema.plugin encrypt, secret: secret
+    it 'should throw an error if installed after standard encrypt plugin', ->
+      EncryptedSchema = mongoose.Schema
+        text: type: String
+      EncryptedSchema.plugin encrypt, secret: secret
+      assert.throw -> EncryptedSchema.plugin encrypt.migrations, secret: secret
+    it 'should cause encrypt plugin to throw an error if installed first', ->
+      EncryptedSchema = mongoose.Schema
+        text: type: String
+      EncryptedSchema.plugin encrypt.migrations, secret: secret
+      assert.throw -> EncryptedSchema.plugin encrypt, secret: secret
+
+describe 'changing encrypted fields', ->
+  beforeEach (done) ->
+    @simpleTestDoc2 = new BasicEncryptedModel
+      text: 'Unencrypted text'
+      bool: true
+      num: 42
+      date: new Date '2014-05-19T16:39:07.536Z'
+      id2: '5303e65d34e1e80d7a7ce212'
+      arr: ['alpha', 'bravo']
+      mix: { str: 'A string', bool: false }
+      buf: new Buffer 'abcdefg'
+
+    @simpleTestDoc2.save (err) =>
+      assert.equal err, null
+      done()
+
+  afterEach (done) ->
+    @simpleTestDoc2.remove (err) ->
+      assert.equal err, null
+      done()
+  
+  describe 'finding docs', ->
+    it 'should not drop data from unencrypted fields which were previously encrypted', (done)  ->
+      LessEncryptedModelSchema = mongoose.Schema
+        text: type: String
+        bool: type: Boolean
+        num: type: Number
+        date: type: Date
+        id2: type: mongoose.Schema.Types.ObjectId
+        arr: [ type: String ]
+        mix: type: mongoose.Schema.Types.Mixed
+        buf: type: Buffer
+        idx: type: String, index: true
+      ,
+        collection: "simples"
+
+      LessEncryptedModelSchema.plugin encrypt, secret: secret, collectionId: "Simple", excludeFromEncryption: ['text', 'bool', 'mix.str' ]
+
+      LessEncryptedModel = mongoose.model 'LessSimple', LessEncryptedModelSchema
+
+      LessEncryptedModel.find
+        _id: @simpleTestDoc2._id
+      , (err, docs) ->
+        assert.equal err, null
+        assert.lengthOf docs, 1
+        doc = docs[0]
+        assert.propertyVal doc, 'num', 42
+        assert.propertyVal doc, 'text', 'Unencrypted text'
+        assert.propertyVal doc, 'bool', true
+        assert.isObject doc, 'mix'
+        assert.propertyVal doc['mix'], 'str', 'A string'
+        assert.propertyVal doc['mix'], 'bool', false
+
+        doc.num = 13
+        doc.save (err) ->
+          assert.equal err, null
+          LessEncryptedModel.find
+            _id: doc._id
+          , (err, docs) ->
+            assert.equal err, null
+            assert.lengthOf docs, 1
+            doc = docs[0]
+            assert.propertyVal doc, 'num', 13
+            assert.propertyVal doc, 'text', 'Unencrypted text'
+            assert.propertyVal doc, 'bool', true
+            assert.isObject doc, 'mix'
+            assert.propertyVal doc['mix'], 'str', 'A string'
+            assert.propertyVal doc['mix'], 'bool', false
+            done()
+      return
