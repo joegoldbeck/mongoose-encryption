@@ -1128,6 +1128,48 @@ describe 'Array EmbeddedDocument', ->
               done()
         return
 
+  describe 'when entire children array is encrypted', ->
+    before ->
+      ChildModelSchema = mongoose.Schema
+        text: type: String
+
+      ParentModelSchema = mongoose.Schema
+        children: [ChildModelSchema]
+
+      ParentModelSchema.plugin encrypt,
+        encryptionKey: encryptionKey,
+        signingKey: signingKey
+        encryptedFields: ['children']
+
+      @ParentModel = mongoose.model 'EncChildrenArrayParent', ParentModelSchema
+      @ChildModel = mongoose.model 'EncChildrenArrayChild', ChildModelSchema
+
+    beforeEach (done) ->
+      @parentDoc = new @ParentModel
+
+      childDoc = new @ChildModel
+        text: 'Child unencrypted text'
+
+      @parentDoc.children.addToSet childDoc
+
+      @parentDoc.save done
+
+    after (done) ->
+      @parentDoc.remove done
+
+    describe 'document.save()', ->
+      it 'should save changes to encrypted children', (done) ->
+        @ParentModel.findById @parentDoc._id, (err, doc) =>
+          assert.equal err, null
+          doc.children[0].text = 'New unencrypted text'
+          doc.save (err) =>
+            assert.equal err, null
+            @ParentModel.findById doc._id, (err, updatedDoc) ->
+              assert.equal err, null
+              assert.equal updatedDoc.children[0].text, 'New unencrypted text'
+              done()
+        return
+
   describe 'when child and parent are encrypted', ->
     before ->
       ChildModelSchema = mongoose.Schema
