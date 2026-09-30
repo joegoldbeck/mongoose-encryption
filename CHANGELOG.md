@@ -1,5 +1,12 @@
 # Release Notes
 
+## Unreleased
+- Mongoose 9 support: `pre('save')` no longer relies on the removed `next()` callback
+- `encrypt`, `decrypt`, `sign`, `authenticate` return a Promise when called without a callback (callback form unchanged)
+- `migrations` statics (`migrateToA`, `migrateSubDocsToA`, `signAll`) work on Mongoose >= 7 (callback-based `find`/`save` were removed there); callback remains optional
+- Replace deprecated `Buffer()` constructor with `Buffer.from` / `Buffer.alloc` #129
+- Add promise-based test suite (`npm run test:promise-api`)
+
 ## v2.1.2
 2021-11-16
 - Supported encrypted subdocuments in Mongoose 6 #102

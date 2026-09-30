@@ -52,6 +52,7 @@
   },
   "scripts": {
     "test": "mocha ./test --extension coffee --require coffeescript/register --timeout 3000 --exit",
+    "test:promise-api": "mocha test/promise-api.test.mjs --exit",
     "build-ts": "tsc"
   }
 }
